@@ -6,6 +6,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Media;
 using Microsoft.Win32;
 using System.Drawing.Imaging;
+using System.Collections.Generic;
 
 namespace Mosaic
 {
@@ -24,14 +25,16 @@ namespace Mosaic
         private double dragHorizontalOffset = 1;
         private double dragVerticalOffset = 1;
         private bool isDragEnabled = false;
-        private String imageDirectoryPath = @"D:\Projects\Mosaic\Images";//@"D:\Users\Ogare\Pictures\Desktop Images";
+        private List<ImageSource> imageSources;// = @"D:\Projects\Mosaic\Images";//@"D:\Users\Ogare\Pictures\Desktop Images";
         private int imageCount = 0;
 
 
         public MainWindow()
         {
             InitializeComponent();
-            l_StatusLabel.Content = "Image directory: " + imageDirectoryPath;
+            DBManager.openDBConnection();
+            l_StatusLabel.Content = "Image directory: ";
+            imageSources = DBManager.getUsedSources();
         }
 
         private void blockUI(bool isBlocked)
@@ -60,12 +63,6 @@ namespace Mosaic
         private async void b_Construct_Click(object sender, RoutedEventArgs e)
         {
             blockUI(true);
-
-            DBManager.databaseCheck();
-            imageCount = imageIndexer.countImages(imageDirectoryPath);
-            setupProgressBar(imageCount, imageIndexer);
-
-            await Task.Run(() => imageIndexer.indexImages(updateStatusText));
             
             int secHorizontal = Convert.ToInt32(tb_SectorsNumHorizontal.Text);
             int secVertical   = Convert.ToInt32(tb_SectorsNumVertical.Text);
@@ -76,7 +73,7 @@ namespace Mosaic
             BitmapImage bi = new BitmapImage(new Uri(tb_URLBox.Text));            
             mosaicBuilder.setImage(bi);
             l_StatusLabel.Content = "Constructing mosaic...";
-            await Task.Run(() => mosaicBuilder.buildMosaic(resolutionW, resolutionH, secHorizontal, secVertical, imageDirectoryPath));
+            await Task.Run(() => mosaicBuilder.buildMosaic(resolutionW, resolutionH, secHorizontal, secVertical, imageSources));
             
             blockUI(false);
 
@@ -88,8 +85,7 @@ namespace Mosaic
             zoomIncrement = zoomIncrementPixels / i_Image.Source.Width;
             
             pb_MosaicProgress.Visibility = Visibility.Collapsed;
-            l_StatusLabel.Content = "Image directory: " + imageDirectoryPath;
-            DBManager.closeDBConnection();
+            l_StatusLabel.Content = "Image directory: ";
         }
 
         private void setupProgressBar(int maximum, object dataContext)
@@ -158,11 +154,18 @@ namespace Mosaic
 
         private void b_SelectImagesFolder_Click(object sender, RoutedEventArgs e)
         {
-            var dialog = new System.Windows.Forms.FolderBrowserDialog();
+            ImageSourceWindow window = new ImageSourceWindow();            
+            window.Left = this.Left + ((this.Width / 2) - (window.Width / 2));
+            window.Top = this.Top + ((this.Height / 2) - (window.Height / 2));                
+            if(window.ShowDialog() == true)
+            {
+                imageSources = DBManager.getUsedSources();
+            }            
+            /*var dialog = new System.Windows.Forms.FolderBrowserDialog();
             dialog.ShowNewFolderButton = false;
             dialog.Description = "Select a folder that contains images that will be used to construct mosaic:";
             if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-                imageDirectoryPath = dialog.SelectedPath;            
+                imageDirectoryPath = dialog.SelectedPath;     */       
         }
 
         private void b_SaveMosaic_Click(object sender, RoutedEventArgs e)
@@ -192,6 +195,11 @@ namespace Mosaic
                 }
                 mosaicBuilder.mosaicBitmap.Save(dialog.FileName, imageFormat);
             }
+        }
+
+        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            DBManager.closeDBConnection();
         }       
         
     }

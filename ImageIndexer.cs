@@ -14,48 +14,62 @@ namespace Mosaic
     class ImageIndexer : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
-        public int progress { get; set; }
+        public int progress { get; private set; }
+        public int currentImageNumber { get; private set; } // same as progress but increased before image is processed (needed for displaying "X out of imageCount images")
+        public int imageCount { get; private set; }
+        public String currentImagePath { get; private set; }
+        public bool stopIndexing = false;
         private String[] imageList;
-        private String dirPath;
-               
 
-        public int countImages(String directoryPath)
+        public ImageIndexer()
         {
-            if (dirPath != directoryPath)
-            {
-                dirPath = directoryPath;
-                imageList = Directory.GetFiles(directoryPath, "*.jpg", SearchOption.TopDirectoryOnly);
-            }
-            return imageList.Length;
+            imageCount = 10; // To make progress bar start empty 
         }
 
-        public void indexImages(Action<int, String> callback)
+        public int indexImages(ImageSource source)
         {
-            if (DBManager.directoryRecorded(dirPath))
-                return;
+            if (DBManager.containsSource(source))
+                return 1;
+            stopIndexing = false;            
             progress = 0;
-            DBManager.addDirectory(dirPath);
-            foreach(String imagePath in imageList)
+            currentImageNumber = 0;
+            DBManager.addSource(source);
+            if (source.type == ImageSource.Type.Directory)
             {
+                imageList = Directory.GetFiles(source.path, "*.jpg", SearchOption.TopDirectoryOnly);
+                imageCount = imageList.Length;
+                source.imageCount = imageCount;
+                OnPropertyChanged("imageCount");
+            }
+            foreach (String imagePath in imageList)
+            {
+                ++currentImageNumber;
+                OnPropertyChanged("currentImageNumber");
+                currentImagePath = imagePath;
+                OnPropertyChanged("currentImagePath");
+                if (indexImage(imagePath, source) == false || stopIndexing)
+                    return 2;
                 ++progress;
-                
-                callback(progress, imagePath);
-                indexImage(imagePath);                
                 OnPropertyChanged("progress");
-            }            
+            }
+            return 0;
         }
 
-        private void indexImage(String imagePath)
+        private bool indexImage(String imagePath, ImageSource source)
         {
+            if (stopIndexing)
+                return false;
             Bitmap image = new Bitmap(imagePath);
-            Color averageColor = getAverageColor(image);            
-            DBManager.addImage(imagePath.Substring(imagePath.LastIndexOf('\\')), averageColor, getImageHash(imagePath));
+            Color averageColor = getAverageColor(image);
+            DBManager.addImage(source, imagePath, averageColor, getImageHash(imagePath));
+            image.Dispose();
+            return true;
         }
 
         private String getImageHash(String imagePath)
         {
             SHA256 sha = SHA256Managed.Create();
-            using(FileStream fstream = File.OpenRead(imagePath))
+            using (FileStream fstream = File.OpenRead(imagePath))
             {
                 return System.Text.Encoding.Default.GetString(sha.ComputeHash(fstream));
             }

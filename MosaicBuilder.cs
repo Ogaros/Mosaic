@@ -63,9 +63,9 @@ namespace Mosaic
             return mosaic;
         }
 
-        public void buildMosaic(int resolutionW, int resolutionH, int horSectors, int verSectors, String imageDirPath)
+        public void buildMosaic(int resolutionW, int resolutionH, int horSectors, int verSectors, List<ImageSource> imageSources)
         {
-            imageDirectoryPath = imageDirPath;
+            this.imageSources = imageSources;
             progress = 0;
             usedImages = new List<Image>();
 
@@ -116,7 +116,7 @@ namespace Mosaic
             sector.Dispose();
             sector = new Bitmap(s_WidthMosaic, s_HeightMosaic, originalBitmap.PixelFormat);
             sector.SetResolution(originalBitmap.HorizontalResolution, originalBitmap.VerticalResolution);
-            var imageList = DBManager.getImages(imageDirectoryPath, color, error);            
+            var imageList = DBManager.getImages(imageSources, color, error);            
             if(imageList.Count == 0)
             {                
                 Graphics g = Graphics.FromImage(sector);
@@ -196,7 +196,7 @@ namespace Mosaic
         private BitmapImage original;
         private BitmapImage mosaic;
         private List<Image> usedImages;
-        private String imageDirectoryPath;
+        private List<ImageSource> imageSources;
         private int s_WidthMosaic;
         private int s_HeightMosaic;
         private int error = 15;
