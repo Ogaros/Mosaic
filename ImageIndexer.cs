@@ -8,6 +8,8 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Security.Cryptography;
 using System.ComponentModel;
+using System.Windows.Media.Imaging;
+
 
 namespace Mosaic
 {
@@ -17,61 +19,147 @@ namespace Mosaic
         public int progress { get; private set; }
         public int currentImageNumber { get; private set; } // same as progress but increased before image is processed (needed for displaying "X out of imageCount images")
         public int imageCount { get; private set; }
-        public String currentImagePath { get; private set; }
+        public String currentImagePath { get; private set; }        
         public bool stopIndexing = false;
+        public int failedToIndex { get; private set; }
+        public enum ErrorType { NoErrors, PartiallyIndexed, IndexingCancelled, NetworkError, AlreadyIndexed}
+        public ErrorType errorStatus { get; private set; }
         private String[] imageList;
 
         public ImageIndexer()
         {
-            imageCount = 10; // To make progress bar start empty 
+            imageCount = 1; // To make progress bar start empty 
         }
 
-        public int indexImages(ImageSource source)
+        public void indexImages(ImageSource source)
         {
             if (DBManager.containsSource(source))
-                return 1;
+            {
+                errorStatus = ErrorType.AlreadyIndexed;
+                return;
+            }
             stopIndexing = false;            
             progress = 0;
             currentImageNumber = 0;
-            DBManager.addSource(source);
-            if (source.type == ImageSource.Type.Directory)
+            failedToIndex = 0;
+            errorStatus = ErrorType.NoErrors;            
+            WebManager webManager = new WebManager();
+            switch(source.type)
             {
-                imageList = Directory.GetFiles(source.path, "*.jpg", SearchOption.TopDirectoryOnly);
-                imageCount = imageList.Length;
-                source.imageCount = imageCount;
-                OnPropertyChanged("imageCount");
+                case ImageSource.Type.Directory:
+                    {
+                        imageList = Directory.GetFiles(source.path, "*.jpg", SearchOption.TopDirectoryOnly);                        
+                        break;
+                    }
+                case ImageSource.Type.ImgurAlbum:
+                    {
+                        String jsonAlbum = null;
+                        try
+                        {
+                            jsonAlbum = webManager.getAlbumJson(source.id);
+                        }
+                        catch (System.Net.WebException)
+                        {
+                            errorStatus = ErrorType.NetworkError;
+                            return;
+                        }
+                        ImgurGallery gallery = JsonParser.deserializeImgurGallery(jsonAlbum);
+                        source.name = gallery.title;
+                        imageList = new String[gallery.images_count];
+                        for (int i = 0; i < gallery.images_count; i++)
+                        {
+                            imageList[i] = gallery.images[i].link;
+                        }
+                        break;
+                    }
+                case ImageSource.Type.ImgurGallery:
+                    {
+                        String jsonGallery = null;
+                        try
+                        {
+                            jsonGallery = webManager.getGalleryJson(source.id);
+                        }
+                        catch(System.Net.WebException)
+                        {
+                            errorStatus = ErrorType.NetworkError;
+                            return;
+                        }
+                        ImgurGallery gallery = JsonParser.deserializeImgurGallery(jsonGallery);
+                        source.name = gallery.title;
+                        imageList = new String[gallery.images_count];
+                        for (int i = 0; i < gallery.images_count; i++ )
+                        {
+                            imageList[i] = gallery.images[i].link;
+                        }
+                        break;
+                    }
             }
+            DBManager.addSource(source);
+            imageCount = imageList.Length;
+            source.imageCount = imageCount;
+            OnPropertyChanged("imageCount");
             foreach (String imagePath in imageList)
             {
                 ++currentImageNumber;
                 OnPropertyChanged("currentImageNumber");
                 currentImagePath = imagePath;
                 OnPropertyChanged("currentImagePath");
-                if (indexImage(imagePath, source) == false || stopIndexing)
-                    return 2;
+                indexImage(imagePath, source);
+                if (stopIndexing == true)
+                {
+                    DBManager.removeSource(source);
+                    errorStatus = ErrorType.IndexingCancelled;
+                    return;
+                }
                 ++progress;
                 OnPropertyChanged("progress");
             }
-            return 0;
+            if (failedToIndex > 0)
+                errorStatus = ErrorType.PartiallyIndexed;
         }
 
-        private bool indexImage(String imagePath, ImageSource source)
+        private void indexImage(String imagePath, ImageSource source)
         {
-            if (stopIndexing)
-                return false;
-            Bitmap image = new Bitmap(imagePath);
+            Bitmap image;
+            if(source.type == ImageSource.Type.Directory)
+            {
+                try
+                {
+                    image = new Bitmap(imagePath);
+                }
+                catch (System.IO.FileNotFoundException)
+                {
+                    ++failedToIndex;
+                    return;
+                }
+            }
+            else
+            {
+                BitmapImage tempImage = null;
+                try
+                {
+                    tempImage = new BitmapImage(new Uri(imagePath));
+                }
+                catch(System.IO.FileNotFoundException)
+                {
+                    ++failedToIndex;
+                    return;
+                }
+                image = ImageConverter.BitmapImageToBitmap(tempImage);
+            }
             Color averageColor = getAverageColor(image);
-            DBManager.addImage(source, imagePath, averageColor, getImageHash(imagePath));
+            DBManager.addImage(source, imagePath, averageColor, getImageHash(image));
             image.Dispose();
-            return true;
         }
 
-        private String getImageHash(String imagePath)
+        private String getImageHash(Bitmap image)
         {
             SHA256 sha = SHA256Managed.Create();
-            using (FileStream fstream = File.OpenRead(imagePath))
+            using(MemoryStream ms = new MemoryStream())
             {
-                return System.Text.Encoding.Default.GetString(sha.ComputeHash(fstream));
+                image.Save(ms, ImageFormat.Jpeg);
+                var hash = sha.ComputeHash(ms.ToArray());
+                return System.Text.Encoding.Default.GetString(hash);
             }
         }
 

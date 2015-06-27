@@ -136,7 +136,17 @@ namespace Mosaic
                 }
                 else
                 {
-                    Bitmap tempImage = new Bitmap(imageList[i].path);
+                    Bitmap tempImage;
+                    var type = DBManager.getImageSourceType(imageList[i].path);
+                    if(type == ImageSource.Type.Directory)
+                    {
+                        tempImage = new Bitmap(imageList[i].path);
+                    }
+                    else
+                    {
+                        BitmapImage bi = new BitmapImage(new Uri(imageList[i].path));
+                        tempImage = ImageConverter.BitmapImageToBitmap(bi);
+                    }
                     image = new Bitmap(tempImage, sector.Width, sector.Height);                    
                     usedImages.Add(imageList[i]);
                     usedImages[usedImages.Count - 1].bitmap = image;

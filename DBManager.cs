@@ -88,7 +88,7 @@ namespace Mosaic
             {
                 sourcePathCondition += " OR Sources.path = '" + sources[i].path + "'";
             }
-            sourcePathCondition += ")";
+            sourcePathCondition += ") ";
             String sql = "SELECT Images.path, red, green, blue FROM Images " +
                          "INNER JOIN Sources ON Sources.id = Images.sourceId AND " + sourcePathCondition +
                          "WHERE (red BETWEEN @redMin AND @redMax) AND " +
@@ -152,6 +152,17 @@ namespace Mosaic
                 cmd.Dispose();
                 return reader.Read();
             }
+        }
+
+        public static ImageSource.Type getImageSourceType(String imagePath)
+        {
+            String sql = "SELECT type FROM Sources " +
+                         "INNER JOIN Images ON Images.path = @path AND Images.sourceId = Sources.id";
+            SQLiteCommand cmd = new SQLiteCommand(sql, connection);
+            cmd.Parameters.Add(new SQLiteParameter("@path", imagePath));
+            var type = (ImageSource.Type)(Int64)cmd.ExecuteScalar();
+            cmd.Dispose();
+            return type;
         }
 
         public static void updateIsUsedField(ImageSource source)

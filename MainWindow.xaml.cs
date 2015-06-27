@@ -25,7 +25,7 @@ namespace Mosaic
         private double dragHorizontalOffset = 1;
         private double dragVerticalOffset = 1;
         private bool isDragEnabled = false;
-        private List<ImageSource> imageSources;// = @"D:\Projects\Mosaic\Images";//@"D:\Users\Ogare\Pictures\Desktop Images";
+        private List<ImageSource> imageSources;
         private int imageCount = 0;
 
 
@@ -34,7 +34,7 @@ namespace Mosaic
             InitializeComponent();
             DBManager.openDBConnection();
             l_StatusLabel.Content = "Image directory: ";
-            imageSources = DBManager.getUsedSources();
+            imageSources = DBManager.getUsedSources();            
         }
 
         private void blockUI(bool isBlocked)
@@ -61,7 +61,7 @@ namespace Mosaic
         }
 
         private async void b_Construct_Click(object sender, RoutedEventArgs e)
-        {
+        {            
             blockUI(true);
             
             int secHorizontal = Convert.ToInt32(tb_SectorsNumHorizontal.Text);
@@ -86,6 +86,10 @@ namespace Mosaic
             
             pb_MosaicProgress.Visibility = Visibility.Collapsed;
             l_StatusLabel.Content = "Image directory: ";
+            WebManager w = new WebManager();
+            String limits = w.getLimitsJson();
+            var lim = JsonParser.getUserLimitAndClientLimit(limits);
+            l_StatusLabel.Content = "User limit: " + lim.Item1.ToString() + " Client limit: " + lim.Item2.ToString();
         }
 
         private void setupProgressBar(int maximum, object dataContext)
@@ -160,12 +164,7 @@ namespace Mosaic
             if(window.ShowDialog() == true)
             {
                 imageSources = DBManager.getUsedSources();
-            }            
-            /*var dialog = new System.Windows.Forms.FolderBrowserDialog();
-            dialog.ShowNewFolderButton = false;
-            dialog.Description = "Select a folder that contains images that will be used to construct mosaic:";
-            if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-                imageDirectoryPath = dialog.SelectedPath;     */       
+            }   
         }
 
         private void b_SaveMosaic_Click(object sender, RoutedEventArgs e)

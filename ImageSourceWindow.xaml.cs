@@ -22,15 +22,18 @@ namespace Mosaic
     /// </summary>
     public partial class ImageSourceWindow : Window
     {
-        private enum ErrorType { WrongSourceURL, SourceAlreadyIndexed, IndexingCancelled, NoSourceToRemove, IndexingInProgress, DirectoryNotFound }
+        private enum ErrorType { WrongSourceURI, SourceAlreadyIndexed, IndexingCancelled, NoSourceToRemove,
+                                 IndexingInProgress, DirectoryNotFound, PartiallyIndexed, CantAccessSource }
         private Dictionary<ErrorType, String> errorMessages = new Dictionary<ErrorType, string>
         {
             {ErrorType.SourceAlreadyIndexed, "This source is already indexed. To reindex this source remove it and then add it again"},
-            {ErrorType.WrongSourceURL, "This source can't be used to construct mosaic. Use any folder on your computer or a link to imgur gallery or album"},
+            {ErrorType.WrongSourceURI, "This source can't be used to construct mosaic. Use any folder on your computer or a link to imgur gallery or album"},
             {ErrorType.IndexingCancelled, "Source indexing was cancelled"},
             {ErrorType.NoSourceToRemove, "Select sources to remove"},
             {ErrorType.IndexingInProgress, "You can't close this window while source indexing is in progress"},
-            {ErrorType.DirectoryNotFound, "This directory was not found on your computer"}
+            {ErrorType.DirectoryNotFound, "This directory was not found on your computer"},
+            {ErrorType.PartiallyIndexed, "images in the source cannot be accessed"},
+            {ErrorType.CantAccessSource, "Source can't be accessed"}
         };
 
         private const String newSourceTBText = "New source path";
@@ -109,24 +112,36 @@ namespace Mosaic
             blockUI(true);
             showIndexingUI(true);
 
-            int returnCode = await Task.Run(() => indexer.indexImages(source));
-            switch (returnCode)
+            await Task.Run(() => indexer.indexImages(source));
+            switch (indexer.errorStatus)
             {
-                    // finished successfully
-                case 0: imageSources.Add(source);
-                    break;
-                    // source already indexed
-                case 1: showErrorMessage(ErrorType.SourceAlreadyIndexed);
-                    break;
-                    // indexing cancelled
-                case 2:
+                case ImageIndexer.ErrorType.NoErrors:
                     {
-                        DBManager.removeSource(source);
+                        imageSources.Add(source);
+                        break;
+                    }
+                case ImageIndexer.ErrorType.AlreadyIndexed:
+                    {
+                        showErrorMessage(ErrorType.SourceAlreadyIndexed);
+                        break;
+                    }
+                case ImageIndexer.ErrorType.IndexingCancelled:
+                    {
                         sp_ImageCountPanel.Visibility = System.Windows.Visibility.Visible;
                         l_IndexedImagePathLabel.SetBinding(Label.ContentProperty, new Binding("currentImagePath"));
                         showErrorMessage(ErrorType.IndexingCancelled);
+                        break;
                     }
-                    break;
+                case ImageIndexer.ErrorType.PartiallyIndexed:
+                    {
+                        showErrorMessage(ErrorType.PartiallyIndexed, indexer.failedToIndex.ToString());
+                        break;
+                    }
+                case ImageIndexer.ErrorType.NetworkError:
+                    {
+                        showErrorMessage(ErrorType.CantAccessSource);
+                        break;
+                    }
             }
             indexer = null;
             showIndexingUI(false);
@@ -136,12 +151,12 @@ namespace Mosaic
         private bool fillSourceFromTextbox(ref ImageSource source)
         {
             String path = tb_SourcePath.Text;
-            String name;
+            String name = "";
             ImageSource.Type type;
             Match match;
             if ((match = regexDirectory.Match(path)).Success)
             {
-                if(Directory.Exists(path) == false)
+                if (Directory.Exists(path) == false)
                 {
                     showErrorMessage(ErrorType.DirectoryNotFound);
                     return false;
@@ -150,20 +165,19 @@ namespace Mosaic
                 name = match.Groups[2].Value;
                 if (name == "")
                     name = path;
-            }
+            } 
+                // Names for imgur albums and galleries are set during image indexing to avoid extra api calls
             else if ((match = regexImgurAlbum.Match(path)).Success)
             {
                 type = ImageSource.Type.ImgurAlbum;
-                name = match.Groups[1].Value;
             }
             else if ((match = regexImgurGallery.Match(path)).Success)
             {
                 type = ImageSource.Type.ImgurGallery;
-                name = match.Groups[1].Value;
             }
             else
             {
-                showErrorMessage(ErrorType.WrongSourceURL);
+                showErrorMessage(ErrorType.WrongSourceURI);
                 return false;
             }
             source = new ImageSource(name, path, type, 0);
@@ -194,9 +208,11 @@ namespace Mosaic
             g_IndexingGrid.Visibility = visibility;
         }      
   
-        private void showErrorMessage(ErrorType errorType)
+        private void showErrorMessage(ErrorType errorType, String parameter = "")
         {
             tblock_ErrorMessage.Text = errorMessages[errorType];
+            if (errorType == ErrorType.PartiallyIndexed) // Add number of images that cannot be accessed
+                tblock_ErrorMessage.Text = parameter + " " + tblock_ErrorMessage.Text;
             tblock_ErrorMessage.Visibility = System.Windows.Visibility.Visible;
             System.Media.SystemSounds.Beep.Play();
         }

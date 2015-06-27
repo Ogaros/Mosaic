@@ -16,12 +16,19 @@ namespace Mosaic
             this.type = type;
             this.imageCount = imageCount;
             this.isUsed = isUsed;
+            if (type == Type.ImgurAlbum || type == Type.ImgurGallery)
+            {
+                id = path.Substring(path.LastIndexOf('/'));
+            }
+            else
+                id = "";
         }
         public String name { get; set; }
         public String path { get; set; }
+        public String id { get; private set; }
         public int imageCount { get; set; }
         public Type type { get; set; }
-        public bool isUsed { get; set; }
+        public bool isUsed { get; set; }        
     }    
 
 }
