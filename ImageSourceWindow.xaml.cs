@@ -22,20 +22,6 @@ namespace Mosaic
     /// </summary>
     public partial class ImageSourceWindow : Window
     {
-        private enum ErrorType { WrongSourceURI, SourceAlreadyIndexed, IndexingCancelled, NoSourceToRemove,
-                                 IndexingInProgress, DirectoryNotFound, PartiallyIndexed, CantAccessSource }
-        private Dictionary<ErrorType, String> errorMessages = new Dictionary<ErrorType, string>
-        {
-            {ErrorType.SourceAlreadyIndexed, "This source is already indexed. To reindex this source remove it and then add it again"},
-            {ErrorType.WrongSourceURI, "This source can't be used to construct mosaic. Use any folder on your computer or a link to imgur gallery or album"},
-            {ErrorType.IndexingCancelled, "Source indexing was cancelled"},
-            {ErrorType.NoSourceToRemove, "Select sources to remove"},
-            {ErrorType.IndexingInProgress, "You can't close this window while source indexing is in progress"},
-            {ErrorType.DirectoryNotFound, "This directory was not found on your computer"},
-            {ErrorType.PartiallyIndexed, "images in the source cannot be accessed"},
-            {ErrorType.CantAccessSource, "Source can't be accessed"}
-        };
-
         private const String newSourceTBText = "New source path";
         public ObservableCollection<ImageSource> imageSources = null;
         private ImageIndexer indexer = null;
@@ -115,31 +101,27 @@ namespace Mosaic
             await Task.Run(() => indexer.indexImages(source));
             switch (indexer.errorStatus)
             {
-                case ImageIndexer.ErrorType.NoErrors:
+                case ErrorType.NoErrors:
                     {
                         imageSources.Add(source);
                         break;
                     }
-                case ImageIndexer.ErrorType.AlreadyIndexed:
+                case ErrorType.IndexingCancelled:
                     {
-                        showErrorMessage(ErrorType.SourceAlreadyIndexed);
-                        break;
-                    }
-                case ImageIndexer.ErrorType.IndexingCancelled:
-                    {
+                        // Restore image path label that was used to show cancelling message
                         sp_ImageCountPanel.Visibility = System.Windows.Visibility.Visible;
                         l_IndexedImagePathLabel.SetBinding(Label.ContentProperty, new Binding("currentImagePath"));
-                        showErrorMessage(ErrorType.IndexingCancelled);
+                        showErrorMessage(indexer.errorStatus);
                         break;
                     }
-                case ImageIndexer.ErrorType.PartiallyIndexed:
+                case ErrorType.PartiallyIndexed:
                     {
-                        showErrorMessage(ErrorType.PartiallyIndexed, indexer.failedToIndex.ToString());
+                        showErrorMessage(indexer.errorStatus, indexer.failedToIndex.ToString());
                         break;
                     }
-                case ImageIndexer.ErrorType.NetworkError:
+                default:
                     {
-                        showErrorMessage(ErrorType.CantAccessSource);
+                        showErrorMessage(indexer.errorStatus);
                         break;
                     }
             }
@@ -210,7 +192,7 @@ namespace Mosaic
   
         private void showErrorMessage(ErrorType errorType, String parameter = "")
         {
-            tblock_ErrorMessage.Text = errorMessages[errorType];
+            tblock_ErrorMessage.Text = ErrorMessage.getMessage(errorType);
             if (errorType == ErrorType.PartiallyIndexed) // Add number of images that cannot be accessed
                 tblock_ErrorMessage.Text = parameter + " " + tblock_ErrorMessage.Text;
             tblock_ErrorMessage.Visibility = System.Windows.Visibility.Visible;

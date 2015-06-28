@@ -26,15 +26,15 @@ namespace Mosaic
         private double dragVerticalOffset = 1;
         private bool isDragEnabled = false;
         private List<ImageSource> imageSources;
-        private int imageCount = 0;
-
 
         public MainWindow()
         {
             InitializeComponent();
             DBManager.openDBConnection();
-            l_StatusLabel.Content = "Image directory: ";
-            imageSources = DBManager.getUsedSources();            
+            imageSources = DBManager.getUsedSources();
+            DataContext = mosaicBuilder;
+            tb_ResolutionW.Text = SystemParameters.VirtualScreenWidth.ToString();
+            tb_ResolutionH.Text = SystemParameters.VirtualScreenHeight.ToString();
         }
 
         private void blockUI(bool isBlocked)
@@ -52,30 +52,47 @@ namespace Mosaic
             tb_URLBox.IsEnabled = isBlocked;
         }
 
-        public void updateStatusText(int imageNumber, String imageTitle)
-        {
-            Dispatcher.Invoke((Action)(() =>
-            {
-                l_StatusLabel.Content = "Indexing: " + imageTitle + " (" + imageNumber + " out of " + imageCount + ")";
-            }));            
-        }
-
         private async void b_Construct_Click(object sender, RoutedEventArgs e)
-        {            
-            blockUI(true);
+        {
+            hideErrorMessage();
+            blockUI(true);                      
+            BitmapImage bi = null;
+            try
+            {
+                bi = new BitmapImage(new Uri(tb_URLBox.Text));
+                mosaicBuilder.setImage(bi);
+            }
+            catch(Exception ex)
+            {
+                if (ex is UriFormatException)
+                {
+                    if (tb_URLBox.Text == "")
+                        showErrorMessage(ErrorType.EmptyImageURI);
+                    else
+                        showErrorMessage(ErrorType.WrongImageURI);
+                }
+                else if (ex is System.IO.FileNotFoundException || ex is System.Net.WebException)
+                    showErrorMessage(ErrorType.CantAccessImage);
+                else
+                    throw;
+                blockUI(false);
+                return;
+            }
             
             int secHorizontal = Convert.ToInt32(tb_SectorsNumHorizontal.Text);
-            int secVertical   = Convert.ToInt32(tb_SectorsNumVertical.Text);
+            int secVertical = Convert.ToInt32(tb_SectorsNumVertical.Text);            
             int resolutionW = Convert.ToInt32(tb_ResolutionW.Text);
             int resolutionH = Convert.ToInt32(tb_ResolutionH.Text);
-            setupProgressBar(secHorizontal * secVertical, mosaicBuilder);
-
-            BitmapImage bi = new BitmapImage(new Uri(tb_URLBox.Text));            
-            mosaicBuilder.setImage(bi);
-            l_StatusLabel.Content = "Constructing mosaic...";
-            await Task.Run(() => mosaicBuilder.buildMosaic(resolutionW, resolutionH, secHorizontal, secVertical, imageSources));
+            setupProgressBar(secHorizontal * secVertical);
             
+            l_StatusLabel.Content = "Constructing mosaic...";
+            await Task.Run(() => mosaicBuilder.buildMosaic(resolutionW, resolutionH, secHorizontal, secVertical, imageSources));       
             blockUI(false);
+            if(mosaicBuilder.errorStatus != ErrorType.NoErrors)
+            {
+                showErrorMessage(mosaicBuilder.errorStatus);
+                return;
+            }
 
             if((bool)rb_MosaicView.IsChecked)
                 i_Image.Source = mosaicBuilder.getMosaic();
@@ -85,35 +102,75 @@ namespace Mosaic
             zoomIncrement = zoomIncrementPixels / i_Image.Source.Width;
             
             pb_MosaicProgress.Visibility = Visibility.Collapsed;
-            l_StatusLabel.Content = "Image directory: ";
             WebManager w = new WebManager();
             String limits = w.getLimitsJson();
             var lim = JsonParser.getUserLimitAndClientLimit(limits);
             l_StatusLabel.Content = "User limit: " + lim.Item1.ToString() + " Client limit: " + lim.Item2.ToString();
         }
 
-        private void setupProgressBar(int maximum, object dataContext)
+        private void setupProgressBar(int maximum)
         {
-            pb_MosaicProgress.DataContext = dataContext;
             pb_MosaicProgress.Maximum = maximum;
             pb_MosaicProgress.Value = 0;
             pb_MosaicProgress.Visibility = Visibility.Visible;
+        }        
+
+        private void b_SelectImagesFolder_Click(object sender, RoutedEventArgs e)
+        {
+            hideErrorMessage();
+            ImageSourceWindow window = new ImageSourceWindow();            
+            window.Left = this.Left + ((this.Width / 2) - (window.Width / 2));
+            window.Top = this.Top + ((this.Height / 2) - (window.Height / 2));                
+            if(window.ShowDialog() == true)
+            {
+                imageSources = DBManager.getUsedSources();
+            }   
         }
 
-        private void tb_URLBox_GotMouseCapture(object sender, MouseEventArgs e)
+        private void b_SaveMosaic_Click(object sender, RoutedEventArgs e)
         {
-            tb_URLBox.SelectAll();            
+            hideErrorMessage();
+            var dialog = new Microsoft.Win32.SaveFileDialog();
+            dialog.Filter = "JPEG image (*.jpg;*.jpeg)|*.jpg;*.jpeg|" +
+                            "Portable Network Graphics (*.png)|*.png|" +
+                            "Bitmap image (*.bmp)|*.bmp|" +
+                            "Tagged Image File Format (*.tiff)|*.tiff|" +
+                            "Graphics Interchange Format (*.gif)|*.gif";
+            if(dialog.ShowDialog() == true)
+            {
+                ImageFormat imageFormat = null;
+                String format = dialog.FileName.Substring(dialog.FileName.LastIndexOf('.'));
+                switch (format)
+                {
+                    case ".jpg": imageFormat = ImageFormat.Jpeg;
+                        break;
+                    case ".png": imageFormat = ImageFormat.Png;
+                        break;
+                    case ".bmp": imageFormat = ImageFormat.Bmp;
+                        break;
+                    case ".tiff": imageFormat = ImageFormat.Tiff;
+                        break;
+                    case ".gif": imageFormat = ImageFormat.Gif;
+                        break;
+                }
+                mosaicBuilder.mosaicBitmap.Save(dialog.FileName, imageFormat);
+            }
+            l_StatusLabel.Content = "Mosaic saved as " + dialog.FileName;
+        }        
+
+        private void showErrorMessage(ErrorType errorType)
+        {
+            l_StatusLabel.Content = "There was an error during mosaic construction";
+            tblock_ErrorMessage.Text = ErrorMessage.getMessage(errorType);
+            tblock_ErrorMessage.Visibility = System.Windows.Visibility.Visible;
+            System.Media.SystemSounds.Beep.Play();
         }
 
-        private void rb_MosaicView_Checked(object sender, RoutedEventArgs e)
+        private void hideErrorMessage()
         {
-            i_Image.Source = mosaicBuilder.getMosaic();
-        }
-
-        private void rb_OriginalImageView_Checked(object sender, RoutedEventArgs e)
-        {
-            i_Image.Source = mosaicBuilder.getOriginal();
-        }
+            l_StatusLabel.Content = "";
+            tblock_ErrorMessage.Visibility = System.Windows.Visibility.Hidden;
+        }        
 
         private void ScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
@@ -128,8 +185,8 @@ namespace Mosaic
                 }
                 ScaleTransform scale = new ScaleTransform(zoomValue, zoomValue);
                 i_Image.LayoutTransform = scale;
-            }            
-            e.Handled = true;   
+            }
+            e.Handled = true;
         }
 
         private void ScrollViewer_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -156,50 +213,74 @@ namespace Mosaic
             }
         }
 
-        private void b_SelectImagesFolder_Click(object sender, RoutedEventArgs e)
+        private void rb_MosaicView_Checked(object sender, RoutedEventArgs e)
         {
-            ImageSourceWindow window = new ImageSourceWindow();            
-            window.Left = this.Left + ((this.Width / 2) - (window.Width / 2));
-            window.Top = this.Top + ((this.Height / 2) - (window.Height / 2));                
-            if(window.ShowDialog() == true)
-            {
-                imageSources = DBManager.getUsedSources();
-            }   
+            i_Image.Source = mosaicBuilder.getMosaic();
         }
 
-        private void b_SaveMosaic_Click(object sender, RoutedEventArgs e)
+        private void rb_OriginalImageView_Checked(object sender, RoutedEventArgs e)
         {
-            var dialog = new Microsoft.Win32.SaveFileDialog();
-            dialog.Filter = "JPEG image (*.jpg;*.jpeg)|*.jpg;*.jpeg|" +
-                            "Portable Network Graphics (*.png)|*.png|" +
-                            "Bitmap image (*.bmp)|*.bmp|" +
-                            "Tagged Image File Format (*.tiff)|*.tiff|" +
-                            "Graphics Interchange Format (*.gif)|*.gif";
-            if(dialog.ShowDialog() == true)
-            {
-                ImageFormat imageFormat = null;
-                String format = dialog.FileName.Substring(dialog.FileName.LastIndexOf('.'));
-                switch (format)
-                {
-                    case ".jpg": imageFormat = ImageFormat.Jpeg;
-                        break;
-                    case ".png": imageFormat = ImageFormat.Png;
-                        break;
-                    case ".bmp": imageFormat = ImageFormat.Bmp;
-                        break;
-                    case ".tiff": imageFormat = ImageFormat.Tiff;
-                        break;
-                    case ".gif": imageFormat = ImageFormat.Gif;
-                        break;
-                }
-                mosaicBuilder.mosaicBitmap.Save(dialog.FileName, imageFormat);
-            }
+            i_Image.Source = mosaicBuilder.getOriginal();
         }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             DBManager.closeDBConnection();
-        }       
+        }
+
+        private void checkIfNumeric(TextCompositionEventArgs e)
+        {
+            char c = Convert.ToChar(e.Text);
+            if (Char.IsNumber(c))
+                e.Handled = false;
+            else
+                e.Handled = true;
+        }
+
+        private void checkIfSpace(KeyEventArgs e)
+        {
+            e.Handled = (e.Key == Key.Space);
+        }
+
+        private void tb_SectorsNumHorizontal_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            checkIfNumeric(e);
+        }
+
+        private void tb_SectorsNumVertical_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            checkIfNumeric(e);
+        }
+
+        private void tb_ResolutionW_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            checkIfNumeric(e);
+        }
+
+        private void tb_ResolutionH_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            checkIfNumeric(e);
+        }
+
+        private void tb_SectorsNumHorizontal_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            checkIfSpace(e);
+        }
+
+        private void tb_SectorsNumVertical_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            checkIfSpace(e);
+        }
+
+        private void tb_ResolutionW_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            checkIfSpace(e);
+        }
+
+        private void tb_ResolutionH_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            checkIfSpace(e);
+        }
         
     }
 }

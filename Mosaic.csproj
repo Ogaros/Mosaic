@@ -90,6 +90,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="ErrorMessages.cs" />
     <Compile Include="ImgurEntities.cs" />
     <Compile Include="JsonParser.cs" />
     <Compile Include="WebManager.cs" />

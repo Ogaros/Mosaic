@@ -22,7 +22,6 @@ namespace Mosaic
         public String currentImagePath { get; private set; }        
         public bool stopIndexing = false;
         public int failedToIndex { get; private set; }
-        public enum ErrorType { NoErrors, PartiallyIndexed, IndexingCancelled, NetworkError, AlreadyIndexed}
         public ErrorType errorStatus { get; private set; }
         private String[] imageList;
 
@@ -35,7 +34,7 @@ namespace Mosaic
         {
             if (DBManager.containsSource(source))
             {
-                errorStatus = ErrorType.AlreadyIndexed;
+                errorStatus = ErrorType.SourceAlreadyIndexed;
                 return;
             }
             stopIndexing = false;            
@@ -60,7 +59,7 @@ namespace Mosaic
                         }
                         catch (System.Net.WebException)
                         {
-                            errorStatus = ErrorType.NetworkError;
+                            errorStatus = ErrorType.CantAccessSource;
                             return;
                         }
                         ImgurGallery gallery = JsonParser.deserializeImgurGallery(jsonAlbum);
@@ -81,7 +80,7 @@ namespace Mosaic
                         }
                         catch(System.Net.WebException)
                         {
-                            errorStatus = ErrorType.NetworkError;
+                            errorStatus = ErrorType.CantAccessSource;
                             return;
                         }
                         ImgurGallery gallery = JsonParser.deserializeImgurGallery(jsonGallery);

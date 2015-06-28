@@ -24,11 +24,24 @@ namespace Mosaic
         }
         public String path;
         public Color color;
-        public Bitmap bitmap;
+        public Bitmap bitmap;        
     }
 
     class MosaicBuilder : INotifyPropertyChanged
     {
+        public event PropertyChangedEventHandler PropertyChanged;
+        public int progress { get; set; }
+        public Bitmap mosaicBitmap; //---------------------------------------------> Костыль.
+        private Bitmap originalBitmap;
+        private BitmapImage original;
+        private BitmapImage mosaic;
+        private List<Image> usedImages;
+        private List<ImageSource> imageSources;
+        private int s_WidthMosaic;
+        private int s_HeightMosaic;
+        private int error = 15; // error for the average color
+        public ErrorType errorStatus { get; private set; }
+
         public MosaicBuilder(){}
 
         public MosaicBuilder(Bitmap bitmap)
@@ -65,12 +78,18 @@ namespace Mosaic
 
         public void buildMosaic(int resolutionW, int resolutionH, int horSectors, int verSectors, List<ImageSource> imageSources)
         {
+            errorStatus = ErrorType.NoErrors;
             this.imageSources = imageSources;
             progress = 0;
             usedImages = new List<Image>();
 
             int s_WidthOriginal = originalBitmap.Width / horSectors;                     
             int s_HeightOriginal = originalBitmap.Height / verSectors;
+            if(s_WidthOriginal == 0 || s_HeightOriginal == 0)
+            {
+                errorStatus = ErrorType.TooManySectors;
+                return;
+            }
             horSectors = originalBitmap.Width / s_WidthOriginal;
             verSectors = originalBitmap.Height / s_HeightOriginal;            
             s_WidthMosaic = resolutionW > originalBitmap.Width ? (resolutionW / horSectors) + 1 : resolutionW / horSectors;
@@ -197,18 +216,6 @@ namespace Mosaic
             {
                 handler(this, new PropertyChangedEventArgs(name));
             }
-        }
-
-        public event PropertyChangedEventHandler PropertyChanged;
-        public int progress { get; set; }
-        public Bitmap mosaicBitmap; //---------------------------------------------> Костыль.
-        private Bitmap originalBitmap;
-        private BitmapImage original;
-        private BitmapImage mosaic;
-        private List<Image> usedImages;
-        private List<ImageSource> imageSources;
-        private int s_WidthMosaic;
-        private int s_HeightMosaic;
-        private int error = 15;
+        }        
     }
 }

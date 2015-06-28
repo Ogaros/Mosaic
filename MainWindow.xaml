@@ -4,74 +4,65 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d" x:Class="Mosaic.MainWindow"
         Title="Mosaic" Height="468.32" Width="760.888" Closing="Window_Closing">
     <Grid Margin="0,0,0,0">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="8*"/>
+            <ColumnDefinition Width="2*"/>
+        </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        <Grid Margin="0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="8*"/>
-                <ColumnDefinition Width="2*"/>
-            </Grid.ColumnDefinitions>
+        <TextBox x:Name="tb_URLBox" TextWrapping="Wrap" Margin="10,10,3,10" VerticalContentAlignment="Center" ToolTip="" Text="http://obukhoff.su/photos/albums/interfacelift_com/01615_glaciarvalehouse_800x480.jpg" MinHeight="30"/>
+        <Button x:Name="b_SelectImagesFolder" Content="Select image sources" Margin="3,10,10,10" Grid.Column="1" Click="b_SelectImagesFolder_Click"/>
+        <Grid Grid.Column="1" Margin="0" Grid.Row="1">
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition/>
             </Grid.RowDefinitions>
-            <TextBox x:Name="tb_URLBox" TextWrapping="Wrap" Margin="10,10,3,10" VerticalContentAlignment="Center" ToolTip="" Text="http://obukhoff.su/photos/albums/interfacelift_com/01615_glaciarvalehouse_800x480.jpg" MinHeight="30" GotMouseCapture="tb_URLBox_GotMouseCapture"/>
-            <Button x:Name="b_SelectImagesFolder" Content="Select image sources" Margin="3,10,10,10" Grid.Column="1" Click="b_SelectImagesFolder_Click"/>
-            <Grid Grid.Column="1" Margin="0" Grid.Row="1">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition/>
-                </Grid.RowDefinitions>                
-                <Label Content="Amount of sectors:" HorizontalAlignment="Left" Margin="0" VerticalAlignment="Top" Padding="3,0,5,5" Height="21" Width="108"/>
-                <Grid Margin="0" Grid.Row="1">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition/>
-                    </Grid.ColumnDefinitions>
-                    <Label Content="Horizontal:" HorizontalAlignment="Right" Margin="0" VerticalAlignment="Top" Padding="3,0,5,5"/>
-                    <TextBox x:Name="tb_SectorsNumHorizontal" Grid.Column="1" TextWrapping="Wrap" Text="100" Padding="0" VerticalAlignment="Top" Margin="0,0,10,5"/>
-                    <Label Content="Vertical:" HorizontalAlignment="Right" Margin="0" Grid.Row="1" VerticalAlignment="Top" Padding="3,0,5,0"/>
-                    <TextBox x:Name="tb_SectorsNumVertical" Grid.Column="1" Margin="0,0,10,0" Grid.Row="1" TextWrapping="Wrap" Text="100"/>
-                    <Label Content="Mosaic resolution:" HorizontalAlignment="Left" Grid.Row="2" VerticalAlignment="Top" Padding="3,10,5,5" Grid.ColumnSpan="2"/>
-                    <Label Content="Width:" HorizontalAlignment="Right" Margin="0" VerticalAlignment="Top" Padding="3,0,5,5" Grid.Row="3"/>
-                    <TextBox x:Name="tb_ResolutionW" Grid.Column="1" TextWrapping="Wrap" Text="1680" Padding="0" VerticalAlignment="Top" Margin="0,0,10,5" Grid.Row="3"/>
-                    <Label Content="Height:" HorizontalAlignment="Right" Margin="0" Grid.Row="4" VerticalAlignment="Top" Padding="3,0,5,0"/>
-                    <TextBox x:Name="tb_ResolutionH" Grid.Column="1" Margin="0,0,10,0" Grid.Row="4" TextWrapping="Wrap" Text="1050"/>
-                </Grid>                
-                <Label Content="Display:" HorizontalAlignment="Left" Margin="3,0,0,0" Grid.Row="2" VerticalAlignment="Top" Padding="0,10,0,0"/>
-                <RadioButton x:Name="rb_MosaicView" Content="Mosaic" HorizontalAlignment="Left" Margin="3,5,0,0" VerticalAlignment="Top" Checked="rb_MosaicView_Checked" Grid.Row="3" Padding="3,0,0,0" IsEnabled="False"/>
-                <RadioButton x:Name="rb_OriginalImageView" Content="Original image" HorizontalAlignment="Left" Margin="3,3,0,0" VerticalAlignment="Top" Grid.Row="4" Checked="rb_OriginalImageView_Checked" Padding="3,0,0,0" IsEnabled="False"/>                
-                <Button x:Name="b_Construct" Content="Construct mosaic" Margin="3,10,10,0" Grid.Row="5" VerticalContentAlignment="Center" Click="b_Construct_Click" Height="30"/>
-                <Button x:Name="b_SaveMosaic" Content="Save mosaic" Margin="3,5,10,0" Grid.Row="6" VerticalAlignment="Top" Click="b_SaveMosaic_Click" IsEnabled="False" Height="30"/>
-            </Grid>
-            <ScrollViewer x:Name="sv_ScrollViewer" Margin="10,0,3,0" Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" PreviewMouseWheel="ScrollViewer_PreviewMouseWheel" PreviewMouseLeftButtonDown="ScrollViewer_PreviewMouseLeftButtonDown" PreviewMouseLeftButtonUp="ScrollViewer_PreviewMouseLeftButtonUp" PreviewMouseMove="sv_ScrollViewer_PreviewMouseMove">
-                <Image x:Name="i_Image" HorizontalAlignment="Left" VerticalAlignment="Top" Source="http://obukhoff.su/photos/albums/interfacelift_com/01615_glaciarvalehouse_800x480.jpg" Stretch="None"/>
-            </ScrollViewer>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+            <Label Content="Amount of sectors:" Grid.Row="0" HorizontalAlignment="Left" Margin="0" VerticalAlignment="Top" Padding="3,0,5,5" Height="21" Width="108" Grid.ColumnSpan="2"/>
+            <Label Content="Horizontal:" Grid.Row="1" HorizontalAlignment="Right" Margin="0" VerticalAlignment="Top" Padding="3,0,5,5"/>
+            <TextBox x:Name="tb_SectorsNumHorizontal" Grid.Row="1" Grid.Column="1" TextWrapping="Wrap" Text="100" Padding="0" VerticalAlignment="Top" Margin="0,0,10,5" PreviewTextInput="tb_SectorsNumHorizontal_PreviewTextInput" PreviewKeyDown="tb_SectorsNumHorizontal_PreviewKeyDown"/>
+            <Label Content="Vertical:" HorizontalAlignment="Right" Margin="0" Grid.Row="2" VerticalAlignment="Top" Padding="3,0,5,0"/>
+            <TextBox x:Name="tb_SectorsNumVertical" Grid.Column="1" Margin="0,0,10,0" Grid.Row="2" TextWrapping="Wrap" Text="100" PreviewTextInput="tb_SectorsNumVertical_PreviewTextInput" PreviewKeyDown="tb_SectorsNumVertical_PreviewKeyDown"/>
+            <Label Content="Mosaic resolution:" HorizontalAlignment="Left" Grid.Row="3" VerticalAlignment="Top" Padding="3,10,5,5" Grid.ColumnSpan="2"/>
+            <Label Content="Width:" HorizontalAlignment="Right" Margin="0" VerticalAlignment="Top" Padding="3,0,5,5" Grid.Row="4"/>
+            <TextBox x:Name="tb_ResolutionW" Grid.Column="1" TextWrapping="Wrap" Text="1680" Padding="0" VerticalAlignment="Top" Margin="0,0,10,5" Grid.Row="4" PreviewTextInput="tb_ResolutionW_PreviewTextInput" PreviewKeyDown="tb_ResolutionW_PreviewKeyDown"/>
+            <Label Content="Height:" HorizontalAlignment="Right" Margin="0" Grid.Row="5" VerticalAlignment="Top" Padding="3,0,5,0"/>
+            <TextBox x:Name="tb_ResolutionH" Grid.Column="1" Margin="0,0,10,0" Grid.Row="5" TextWrapping="Wrap" Text="1050" PreviewTextInput="tb_ResolutionH_PreviewTextInput" PreviewKeyDown="tb_ResolutionH_PreviewKeyDown"/>
+
+            <Label Content="Display:" HorizontalAlignment="Left" Margin="3,0,0,0" Grid.Row="6" VerticalAlignment="Top" Padding="0,10,0,0" Grid.ColumnSpan="2"/>
+            <RadioButton x:Name="rb_MosaicView" Content="Mosaic" HorizontalAlignment="Left" Margin="3,5,0,0" VerticalAlignment="Top" Checked="rb_MosaicView_Checked" Grid.Row="7" Padding="3,0,0,0" IsEnabled="False" Grid.ColumnSpan="2"/>
+            <RadioButton x:Name="rb_OriginalImageView" Content="Original image" HorizontalAlignment="Left" Margin="3,3,0,0" VerticalAlignment="Top" Grid.Row="8" Checked="rb_OriginalImageView_Checked" Padding="3,0,0,0" IsEnabled="False" Grid.ColumnSpan="2"/>
+            <Button x:Name="b_Construct" Content="Construct mosaic" Margin="3,10,10,0" Grid.Row="9" VerticalContentAlignment="Center" Click="b_Construct_Click" Height="30" Grid.ColumnSpan="2"/>
+            <Button x:Name="b_SaveMosaic" Content="Save mosaic" Margin="3,5,10,0" Grid.Row="10" VerticalAlignment="Top" Click="b_SaveMosaic_Click" IsEnabled="False" Height="30" Grid.ColumnSpan="2"/>
         </Grid>
-        <StatusBar Margin="0" Grid.Row="1" Height="25">
-            <Grid Margin="0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition/>
-                </Grid.ColumnDefinitions>
-                <ProgressBar x:Name="pb_MosaicProgress" Value="{Binding progress}" Width="138" Margin="0" Visibility="Collapsed"/>
-                <Label x:Name="l_StatusLabel" Content="Display:" HorizontalAlignment="Left" Margin="5,0,0,0" Grid.Row="1" VerticalAlignment="Top" Padding="0" Grid.Column="1"/>
-            </Grid>
+        <ScrollViewer x:Name="sv_ScrollViewer" Margin="10,0,3,0" Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" PreviewMouseWheel="ScrollViewer_PreviewMouseWheel" PreviewMouseLeftButtonDown="ScrollViewer_PreviewMouseLeftButtonDown" PreviewMouseLeftButtonUp="ScrollViewer_PreviewMouseLeftButtonUp" PreviewMouseMove="sv_ScrollViewer_PreviewMouseMove">
+            <Image x:Name="i_Image" HorizontalAlignment="Left" VerticalAlignment="Top" Source="http://obukhoff.su/photos/albums/interfacelift_com/01615_glaciarvalehouse_800x480.jpg" Stretch="None"/>
+        </ScrollViewer>
+        <StatusBar Margin="0" Grid.Row="2" Height="25" Grid.ColumnSpan="2">
+            <StatusBarItem Padding="10,0,0,0">
+                <StackPanel Orientation="Horizontal" Margin="0">
+                    <ProgressBar x:Name="pb_MosaicProgress" Value="{Binding progress}" Width="138" Margin="0,0,5,0" Visibility="Collapsed"/>
+                    <Label x:Name="l_StatusLabel" HorizontalAlignment="Left" VerticalAlignment="Top" Padding="0"/>                    
+                </StackPanel>
+            </StatusBarItem>
+            <StatusBarItem HorizontalAlignment="Right" Padding="0,0,10,0">
+                <TextBlock x:Name="tblock_ErrorMessage" Text="Error" HorizontalAlignment="Right" TextWrapping="Wrap" Padding="0" Foreground="#FFE01717" Visibility="Hidden"/>
+            </StatusBarItem>
         </StatusBar>
     </Grid>
 </Window>
