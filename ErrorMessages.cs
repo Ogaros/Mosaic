@@ -11,10 +11,10 @@ namespace Mosaic
         IndexingInProgress, DirectoryNotFound, PartiallyIndexed, CantAccessSource,
 
         // Errors that are displayed in the main window
-        WrongImageURI, EmptyImageURI, CantAccessImage, TooManySectors
+        WrongImageURI, EmptyImageURI, CantAccessImage, TooManySectors, WrongMosaicParameter, ZeroMosaicResolution
     }
-    class ErrorMessage
-    {     
+    internal static class ErrorMessage
+    {
         public static String getMessage(ErrorType type)
         {
             return errorMessages[type];
@@ -32,7 +32,9 @@ namespace Mosaic
             {ErrorType.WrongImageURI, "Wrong image URI. Use a path to the image on your computer or the internet link"},
             {ErrorType.EmptyImageURI, "No image was specified for mosaic"},
             {ErrorType.CantAccessImage, "Selected image can't be accessed or does not exist"},
-            {ErrorType.TooManySectors, "Too many sectors for the image of this size"}
+            {ErrorType.TooManySectors, "Too many sectors for the image of this size"},
+            {ErrorType.WrongMosaicParameter, "Use numbers to setup amount of sectors and mosaic resolution"},
+            {ErrorType.ZeroMosaicResolution, "You can't use 0 as a resolution parameter"}
         };
 
     }

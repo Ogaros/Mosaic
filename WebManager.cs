@@ -9,7 +9,7 @@ using System.IO;
 
 namespace Mosaic
 {    
-    class WebManager
+    internal class WebManager : IDisposable
     {
         private const String imgurClientID = "321a023fb8a74a2";
         private WebClient client = new WebClient();
@@ -26,7 +26,9 @@ namespace Mosaic
             int responseStatusCode = JsonParser.getStatusCode(jsonGallery);
             if (responseStatusCode != 200)
                 throw new WebException("Imgur returned error code: " + responseStatusCode.ToString());
-            return jsonGallery;
+            int[] arr = new int[10];
+            arr.Where(x => x % 2 == 0).Sum();
+            return jsonGallery;           
         }
         
         public String getAlbumJson(String alumID)
@@ -43,6 +45,16 @@ namespace Mosaic
         {
             String url = "https://api.imgur.com/3/credits";
             return client.DownloadString(url);
+        }
+
+        public void Dispose()
+        {
+            if (client != null)
+            {
+                client.Dispose();
+                client = null;
+                GC.SuppressFinalize(this);
+            }
         }
     }
 }

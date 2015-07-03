@@ -7,6 +7,7 @@ using System.Windows.Media;
 using Microsoft.Win32;
 using System.Drawing.Imaging;
 using System.Collections.Generic;
+using System.IO;
 
 namespace Mosaic
 {
@@ -18,7 +19,6 @@ namespace Mosaic
         private const double zoomIncrementPixels = 50;
 
         private MosaicBuilder mosaicBuilder = new MosaicBuilder();
-        private ImageIndexer imageIndexer = new ImageIndexer();
         private double zoomValue = 1.0;
         private double zoomIncrement = 0.2;
         private Point dragMousePoint = new Point();
@@ -42,7 +42,7 @@ namespace Mosaic
             isBlocked = !isBlocked;
             b_Construct.IsEnabled = isBlocked;
             b_SaveMosaic.IsEnabled = isBlocked;
-            b_SelectImagesFolder.IsEnabled = isBlocked;
+            b_SelectSources.IsEnabled = isBlocked;
             rb_MosaicView.IsEnabled = isBlocked;
             rb_OriginalImageView.IsEnabled = isBlocked;
             tb_SectorsNumHorizontal.IsEnabled = isBlocked;
@@ -55,14 +55,20 @@ namespace Mosaic
         private async void b_Construct_Click(object sender, RoutedEventArgs e)
         {
             hideErrorMessage();
+
             blockUI(true);                      
             BitmapImage bi = null;
+            int secHorizontal, secVertical, resolutionW, resolutionH;
             try
             {
                 bi = new BitmapImage(new Uri(tb_URLBox.Text));
                 mosaicBuilder.setImage(bi);
+                secHorizontal = Convert.ToInt32(tb_SectorsNumHorizontal.Text);
+                secVertical = Convert.ToInt32(tb_SectorsNumVertical.Text);
+                resolutionW = Convert.ToInt32(tb_ResolutionW.Text);
+                resolutionH = Convert.ToInt32(tb_ResolutionH.Text);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 if (ex is UriFormatException)
                 {
@@ -73,21 +79,25 @@ namespace Mosaic
                 }
                 else if (ex is System.IO.FileNotFoundException || ex is System.Net.WebException)
                     showErrorMessage(ErrorType.CantAccessImage);
+                else if (ex is FormatException)
+                    showErrorMessage(ErrorType.WrongMosaicParameter);
                 else
                     throw;
                 blockUI(false);
                 return;
             }
-            
-            int secHorizontal = Convert.ToInt32(tb_SectorsNumHorizontal.Text);
-            int secVertical = Convert.ToInt32(tb_SectorsNumVertical.Text);            
-            int resolutionW = Convert.ToInt32(tb_ResolutionW.Text);
-            int resolutionH = Convert.ToInt32(tb_ResolutionH.Text);
+            if (resolutionH == 0 || resolutionW == 0)
+            {
+                showErrorMessage(ErrorType.ZeroMosaicResolution);
+                blockUI(false);
+                return;
+            }
             setupProgressBar(secHorizontal * secVertical);
-            
+            TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.Normal;
             l_StatusLabel.Content = "Constructing mosaic...";
             await Task.Run(() => mosaicBuilder.buildMosaic(resolutionW, resolutionH, secHorizontal, secVertical, imageSources));       
             blockUI(false);
+            pb_MosaicProgress.Visibility = Visibility.Collapsed;
             if(mosaicBuilder.errorStatus != ErrorType.NoErrors)
             {
                 showErrorMessage(mosaicBuilder.errorStatus);
@@ -100,12 +110,8 @@ namespace Mosaic
                 rb_MosaicView.IsChecked = true;
 
             zoomIncrement = zoomIncrementPixels / i_Image.Source.Width;
-            
-            pb_MosaicProgress.Visibility = Visibility.Collapsed;
-            WebManager w = new WebManager();
-            String limits = w.getLimitsJson();
-            var lim = JsonParser.getUserLimitAndClientLimit(limits);
-            l_StatusLabel.Content = "User limit: " + lim.Item1.ToString() + " Client limit: " + lim.Item2.ToString();
+            TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.None;
+            l_StatusLabel.Content = "Mosaic constructed";
         }
 
         private void setupProgressBar(int maximum)
@@ -115,10 +121,11 @@ namespace Mosaic
             pb_MosaicProgress.Visibility = Visibility.Visible;
         }        
 
-        private void b_SelectImagesFolder_Click(object sender, RoutedEventArgs e)
+        private void b_SelectSources_Click(object sender, RoutedEventArgs e)
         {
             hideErrorMessage();
-            ImageSourceWindow window = new ImageSourceWindow();            
+            ImageSourceWindow window = new ImageSourceWindow();
+            window.Owner = this;
             window.Left = this.Left + ((this.Width / 2) - (window.Width / 2));
             window.Top = this.Top + ((this.Height / 2) - (window.Height / 2));                
             if(window.ShowDialog() == true)
@@ -138,22 +145,31 @@ namespace Mosaic
                             "Graphics Interchange Format (*.gif)|*.gif";
             if(dialog.ShowDialog() == true)
             {
-                ImageFormat imageFormat = null;
                 String format = dialog.FileName.Substring(dialog.FileName.LastIndexOf('.'));
+                BitmapEncoder encoder = null;
                 switch (format)
                 {
-                    case ".jpg": imageFormat = ImageFormat.Jpeg;
+                    case ".jpg": 
+                        encoder = new JpegBitmapEncoder();
                         break;
-                    case ".png": imageFormat = ImageFormat.Png;
+                    case ".png": 
+                        encoder = new PngBitmapEncoder();
                         break;
-                    case ".bmp": imageFormat = ImageFormat.Bmp;
+                    case ".bmp": 
+                        encoder = new BmpBitmapEncoder();
                         break;
-                    case ".tiff": imageFormat = ImageFormat.Tiff;
+                    case ".tiff":
+                        encoder = new TiffBitmapEncoder();
                         break;
-                    case ".gif": imageFormat = ImageFormat.Gif;
+                    case ".gif":
+                        encoder = new GifBitmapEncoder();
                         break;
                 }
-                mosaicBuilder.mosaicBitmap.Save(dialog.FileName, imageFormat);
+                encoder.Frames.Add(BitmapFrame.Create(mosaicBuilder.getMosaic()));
+                using (FileStream stream = new FileStream(dialog.FileName, FileMode.Create))
+                {
+                    encoder.Save(stream);
+                }
             }
             l_StatusLabel.Content = "Mosaic saved as " + dialog.FileName;
         }        
@@ -228,7 +244,7 @@ namespace Mosaic
             DBManager.closeDBConnection();
         }
 
-        private void checkIfNumeric(TextCompositionEventArgs e)
+        private static void checkIfNumeric(TextCompositionEventArgs e)
         {
             char c = Convert.ToChar(e.Text);
             if (Char.IsNumber(c))
@@ -237,7 +253,7 @@ namespace Mosaic
                 e.Handled = true;
         }
 
-        private void checkIfSpace(KeyEventArgs e)
+        private static void checkIfSpace(KeyEventArgs e)
         {
             e.Handled = (e.Key == Key.Space);
         }
@@ -280,6 +296,11 @@ namespace Mosaic
         private void tb_ResolutionH_PreviewKeyDown(object sender, KeyEventArgs e)
         {
             checkIfSpace(e);
+        }
+
+        private void pb_MosaicProgress_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            TaskbarItemInfo.ProgressValue = pb_MosaicProgress.Value / pb_MosaicProgress.Maximum;
         }
         
     }

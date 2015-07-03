@@ -3,6 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d" x:Class="Mosaic.MainWindow"
         Title="Mosaic" Height="468.32" Width="760.888" Closing="Window_Closing">
+    <Window.TaskbarItemInfo>
+        <TaskbarItemInfo/>
+    </Window.TaskbarItemInfo>
     <Grid Margin="0,0,0,0">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="8*"/>
@@ -14,7 +17,7 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <TextBox x:Name="tb_URLBox" TextWrapping="Wrap" Margin="10,10,3,10" VerticalContentAlignment="Center" ToolTip="" Text="http://obukhoff.su/photos/albums/interfacelift_com/01615_glaciarvalehouse_800x480.jpg" MinHeight="30"/>
-        <Button x:Name="b_SelectImagesFolder" Content="Select image sources" Margin="3,10,10,10" Grid.Column="1" Click="b_SelectImagesFolder_Click"/>
+        <Button x:Name="b_SelectSources" Content="Select image sources" Margin="3,10,10,10" Grid.Column="1" Click="b_SelectSources_Click"/>
         <Grid Grid.Column="1" Margin="0" Grid.Row="1">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -56,7 +59,7 @@
         <StatusBar Margin="0" Grid.Row="2" Height="25" Grid.ColumnSpan="2">
             <StatusBarItem Padding="10,0,0,0">
                 <StackPanel Orientation="Horizontal" Margin="0">
-                    <ProgressBar x:Name="pb_MosaicProgress" Value="{Binding progress}" Width="138" Margin="0,0,5,0" Visibility="Collapsed"/>
+                    <ProgressBar x:Name="pb_MosaicProgress" Value="{Binding progress}" Width="138" Margin="0,0,5,0" Visibility="Collapsed" ValueChanged="pb_MosaicProgress_ValueChanged"/>
                     <Label x:Name="l_StatusLabel" HorizontalAlignment="Left" VerticalAlignment="Top" Padding="0"/>                    
                 </StackPanel>
             </StatusBarItem>

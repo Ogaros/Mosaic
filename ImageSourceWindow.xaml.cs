@@ -23,18 +23,18 @@ namespace Mosaic
     public partial class ImageSourceWindow : Window
     {
         private const String newSourceTBText = "New source path";
-        public ObservableCollection<ImageSource> imageSources = null;
+        private ObservableCollection<ImageSource> imageSources = null;
         private ImageIndexer indexer = null;
         private Regex regexDirectory = new Regex(@".:\\(.*\\)*(.*)");
-        private Regex regexImgurGallery = new Regex(@"http:\/\/imgur.com\/gallery\/(.*)");
-        private Regex regexImgurAlbum = new Regex(@"http:\/\/imgur.com\/a\/(.*)");
+        private Regex regexImgurGallery = new Regex(@"https?:\/\/imgur.com\/gallery\/(.*)");
+        private Regex regexImgurAlbum = new Regex(@"https?:\/\/imgur.com\/a\/(.*)");
 
         public ImageSourceWindow()
         {
             DataContext = this;
             InitializeComponent();
             fillSourceList();
-            lv_SourceList.ItemsSource = imageSources;        
+            lv_SourceList.ItemsSource = imageSources;                       
         }
 
         private void fillSourceList()
@@ -66,7 +66,7 @@ namespace Mosaic
 
         private void b_RemoveSelected_Click(object sender, RoutedEventArgs e)
         {
-            hideErrorMessage();
+            hideErrorMessage();            
             List<ImageSource> sourcesToDelete = new List<ImageSource>();
             foreach(ImageSource source in imageSources)
             {
@@ -80,6 +80,11 @@ namespace Mosaic
                 showErrorMessage(ErrorType.NoSourceToRemove);
                 return;
             }
+            if (MessageBox.Show("Are you sure you want to remove selected sources?\n" +
+                                "You will be unable to use them for mosaic.\n" +
+                                "To use selected sources again, you will have to re-index them",
+                                "Confirm removal", MessageBoxButton.YesNo) == MessageBoxResult.No)
+                return;
             foreach(ImageSource source in sourcesToDelete)
             {
                 DBManager.removeSource(source);
@@ -90,6 +95,7 @@ namespace Mosaic
         private async void b_AddNewSource_Click(object sender, RoutedEventArgs e)
         {
             hideErrorMessage();
+            Owner.TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.Normal; 
             ImageSource source = null;
             if (fillSourceFromTextbox(ref source) == false)            
                 return;            
@@ -127,7 +133,8 @@ namespace Mosaic
             }
             indexer = null;
             showIndexingUI(false);
-            blockUI(false);     
+            blockUI(false);
+            Owner.TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.None;
         }
 
         private bool fillSourceFromTextbox(ref ImageSource source)
@@ -211,6 +218,11 @@ namespace Mosaic
                 showErrorMessage(ErrorType.IndexingInProgress);                
                 e.Cancel = true;
             }
+        }
+
+        private void pb_IndexingProgress_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            Owner.TaskbarItemInfo.ProgressValue = pb_IndexingProgress.Value / pb_IndexingProgress.Maximum;
         }
     }
 }

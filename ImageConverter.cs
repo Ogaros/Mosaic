@@ -9,7 +9,7 @@ using System.Runtime.InteropServices;
 
 namespace Mosaic
 {
-    class ImageConverter
+    internal static class ImageConverter
     {
         public static Bitmap BitmapImageToBitmap(BitmapImage bi)
         {

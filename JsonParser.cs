@@ -8,7 +8,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Mosaic
 {
-    class JsonParser
+    internal static class JsonParser
     {
         public static ImgurGallery deserializeImgurGallery(String json)
         {                     
