@@ -55,7 +55,6 @@ namespace Mosaic
         private async void b_Construct_Click(object sender, RoutedEventArgs e)
         {
             hideErrorMessage();
-
             blockUI(true);                      
             BitmapImage bi = null;
             int secHorizontal, secVertical, resolutionW, resolutionH;

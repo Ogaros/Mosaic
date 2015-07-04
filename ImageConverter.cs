@@ -15,16 +15,47 @@ namespace Mosaic
         {
             using (MemoryStream outStream = new MemoryStream())
             {
-                JpegBitmapDecoder jd = null;
-                if(bi.UriSource != null)
-                    jd = new JpegBitmapDecoder(bi.UriSource, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.Default);
-                else                    
-                    jd = new JpegBitmapDecoder(bi.StreamSource, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.Default);
-                BitmapEncoder enc = new BmpBitmapEncoder();            
-                enc.Frames.Add(jd.Frames[0]);
-                enc.Save(outStream);
-                Bitmap bitmap = new Bitmap(outStream);
-                return new Bitmap(bitmap);
+                BitmapDecoder decoder = null;
+                BitmapEncoder encoder = null;
+                if (bi.UriSource != null)
+                {
+                    String uriString = bi.UriSource.ToString();
+                    String format = uriString.Substring(uriString.LastIndexOf('.'));
+                    switch (format)
+                    {
+                        case ".png":
+                            decoder = new PngBitmapDecoder(bi.UriSource, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.Default);
+                            encoder = new PngBitmapEncoder();
+                            break;
+                        case ".gif":
+                            decoder = new GifBitmapDecoder(bi.UriSource, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.Default);
+                            encoder = new GifBitmapEncoder();
+                            break;
+                        case ".bmp":
+                            decoder = new BmpBitmapDecoder(bi.UriSource, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.Default);
+                            encoder = new BmpBitmapEncoder();
+                            break;
+                        case ".tiff":
+                            decoder = new TiffBitmapDecoder(bi.UriSource, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.Default);
+                            encoder = new TiffBitmapEncoder();
+                            break;
+                        default:
+                            decoder = new JpegBitmapDecoder(bi.UriSource, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.Default);
+                            encoder = new JpegBitmapEncoder();
+                            break;
+                    }
+                }
+                else
+                {
+                    decoder = new JpegBitmapDecoder(bi.StreamSource, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.Default);
+                    encoder = new JpegBitmapEncoder();
+                }           
+                encoder.Frames.Add(decoder.Frames[0]);
+                encoder.Save(outStream);
+                using (Bitmap bitmap = new Bitmap(outStream))
+                {
+                    return new Bitmap(bitmap);
+                }
             }
         }
 

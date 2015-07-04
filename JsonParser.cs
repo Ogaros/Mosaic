@@ -14,7 +14,9 @@ namespace Mosaic
         {                     
             JObject gallery = JObject.Parse(json);
             JToken data = gallery["data"];
-            return JsonConvert.DeserializeObject<ImgurGallery>(data.ToString());
+            var g = JsonConvert.DeserializeObject<ImgurGallery>(data.ToString());
+            g.images_count = g.images.Count; // Sometimes request returns wrong number of images so it's safer to recount
+            return g;
         }
 
         public static Tuple<int, int> getUserLimitAndClientLimit(String json)

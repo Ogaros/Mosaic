@@ -17,7 +17,8 @@ namespace Mosaic
     internal class ImageIndexer : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
-        public int progress { get; private set; } // number of indexed images
+        public int progress { get { return _progress; } private set { _progress = value; } } // number of indexed images
+        private volatile int _progress;
         public int currentImageNumber { get; private set; } // same as progress but increased before image is processed (needed for displaying "X out of imageCount images")
         public int imageCount { get; private set; }
         public String currentImagePath { get; private set; }        
@@ -43,7 +44,7 @@ namespace Mosaic
                 return;
             }
             stopIndexing = false;            
-            progress = 0;
+            _progress = 0;
             currentImageNumber = 0;
             failedToIndex = 0;
             errorStatus = ErrorType.NoErrors;
@@ -108,7 +109,7 @@ namespace Mosaic
             {                
                 Task.Run(() => indexImage(imagePath, source));                              
             }
-            while ((stopIndexing == false && progress < imageCount) || (stopIndexing == true && semaphore.CurrentCount != threadCount))
+            while ((stopIndexing == false && _progress < imageCount) || (stopIndexing == true && semaphore.CurrentCount != threadCount))
             {
                 Thread.Sleep(500);
             }
@@ -153,20 +154,20 @@ namespace Mosaic
                 try
                 {
                     tempImage = new BitmapImage(new Uri(imagePath));
+                    image = ImageConverter.BitmapImageToBitmap(tempImage); 
                 }
                 catch(System.IO.FileNotFoundException)
                 {
                     ++failedToIndex;
                     return;
-                }
-                image = ImageConverter.BitmapImageToBitmap(tempImage);                
+                }                               
             }
             Color averageColor = getAverageColor(image);
             DBManager.addImage(source, imagePath, averageColor, getImageHash(image));
             image.Dispose();
             if (stopIndexing == false)
             {
-                ++progress;
+                ++_progress;
                 OnPropertyChanged("progress");
             }
             semaphore.Release();
