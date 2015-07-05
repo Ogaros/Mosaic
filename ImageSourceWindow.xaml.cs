@@ -1,19 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.Collections.ObjectModel;
+using System.IO;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
-using System.Collections.ObjectModel;
-using System.Text.RegularExpressions;
-using System.IO;
 
 namespace Mosaic
 {
@@ -25,28 +19,28 @@ namespace Mosaic
         private const String newSourceTBText = "New source path";
         private ObservableCollection<ImageSource> imageSources = null;
         private ImageIndexer indexer = null;
-        private Regex regexDirectory = new Regex(@".:\\(.*\\)*(.*)");
-        private Regex regexImgurGallery = new Regex(@"https?:\/\/imgur.com\/gallery\/(.*)");
-        private Regex regexImgurAlbum = new Regex(@"https?:\/\/imgur.com\/a\/(.*)");
+        private readonly Regex regexDirectory = new Regex(@".:\\(.*\\)*(.*)");
+        private readonly Regex regexImgurGallery = new Regex(@"https?:\/\/imgur.com\/gallery\/(.*)");
+        private readonly Regex regexImgurAlbum = new Regex(@"https?:\/\/imgur.com\/a\/(.*)");
 
         public ImageSourceWindow()
         {
             DataContext = this;
             InitializeComponent();
-            fillSourceList();
+            FillSourceList();
             lv_SourceList.ItemsSource = imageSources;                       
         }
 
-        private void fillSourceList()
+        private void FillSourceList()
         {
-            imageSources = new ObservableCollection<ImageSource>(DBManager.getAllSources());
+            imageSources = new ObservableCollection<ImageSource>(DBManager.GetAllSources());
         }
 
         private void b_Ok_Click(object sender, RoutedEventArgs e)
         {
             foreach(ImageSource source in imageSources)
             {
-                DBManager.updateIsUsedField(source);
+                DBManager.UpdateIsUsedField(source);
             }
             this.DialogResult = true;
             this.Close();
@@ -66,7 +60,7 @@ namespace Mosaic
 
         private void b_RemoveSelected_Click(object sender, RoutedEventArgs e)
         {
-            hideErrorMessage();            
+            HideErrorMessage();            
             List<ImageSource> sourcesToDelete = new List<ImageSource>();
             foreach(ImageSource source in imageSources)
             {
@@ -77,7 +71,7 @@ namespace Mosaic
             }
             if(sourcesToDelete.Count == 0)
             {
-                showErrorMessage(ErrorType.NoSourceToRemove);
+                ShowErrorMessage(ErrorType.NoSourceToRemove);
                 return;
             }
             if (MessageBox.Show("Are you sure you want to remove selected sources?\n" +
@@ -87,25 +81,24 @@ namespace Mosaic
                 return;
             foreach(ImageSource source in sourcesToDelete)
             {
-                DBManager.removeSource(source);
+                DBManager.RemoveSource(source);
                 imageSources.Remove(source);
             }
         }
 
         private async void b_AddNewSource_Click(object sender, RoutedEventArgs e)
         {
-            hideErrorMessage();
-            Owner.TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.Normal; 
+            HideErrorMessage();             
             ImageSource source = null;
-            if (fillSourceFromTextbox(ref source) == false)            
+            if (FillSourceFromTextbox(ref source) == false) // error with the source URI           
                 return;            
             indexer = new ImageIndexer();
             g_IndexingGrid.DataContext = indexer;
-            blockUI(true);
-            showIndexingUI(true);
+            BlockUI(true);
+            ShowIndexingUI(true);
 
-            await Task.Run(() => indexer.indexImages(source));
-            switch (indexer.errorStatus)
+            await Task.Run(() => indexer.IndexImages(source));
+            switch (indexer.ErrorStatus)
             {
                 case ErrorType.NoErrors:
                     {
@@ -116,28 +109,29 @@ namespace Mosaic
                     {
                         // Restore image path label that was used to show cancelling message
                         sp_ImageCountPanel.Visibility = System.Windows.Visibility.Visible;
-                        l_IndexedImagePathLabel.SetBinding(Label.ContentProperty, new Binding("currentImagePath"));
-                        showErrorMessage(indexer.errorStatus);
+                        l_IndexedImagePathLabel.SetBinding(Label.ContentProperty, new Binding("CurrentImagePath"));
+                        ShowErrorMessage(indexer.ErrorStatus);
                         break;
                     }
                 case ErrorType.PartiallyIndexed:
                     {
-                        showErrorMessage(indexer.errorStatus, indexer.failedToIndex.ToString());
+                        ShowErrorMessage(indexer.ErrorStatus, indexer.FailedToIndex.ToString());
                         break;
                     }
                 default:
                     {
-                        showErrorMessage(indexer.errorStatus);
+                        ShowErrorMessage(indexer.ErrorStatus);
                         break;
                     }
             }
+            indexer.Dispose();
             indexer = null;
-            showIndexingUI(false);
-            blockUI(false);
+            ShowIndexingUI(false);
+            BlockUI(false);
             Owner.TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.None;
         }
 
-        private bool fillSourceFromTextbox(ref ImageSource source)
+        private bool FillSourceFromTextbox(ref ImageSource source)
         {
             String path = tb_SourcePath.Text;
             String name = "";
@@ -147,7 +141,7 @@ namespace Mosaic
             {
                 if (Directory.Exists(path) == false)
                 {
-                    showErrorMessage(ErrorType.DirectoryNotFound);
+                    ShowErrorMessage(ErrorType.DirectoryNotFound);
                     return false;
                 }
                 type = ImageSource.Type.Directory;
@@ -166,7 +160,7 @@ namespace Mosaic
             }
             else
             {
-                showErrorMessage(ErrorType.WrongSourceURI);
+                ShowErrorMessage(ErrorType.WrongSourceURI);
                 return false;
             }
             source = new ImageSource(name, path, type, 0);
@@ -175,12 +169,12 @@ namespace Mosaic
 
         private void b_CancelIndexing_Click(object sender, RoutedEventArgs e)
         {
-            indexer.stopIndexing = true;
+            indexer.StopIndexing = true;
             sp_ImageCountPanel.Visibility = System.Windows.Visibility.Hidden;
             l_IndexedImagePathLabel.Content = "Cancelling source indexing...";
         }
 
-        private void blockUI(bool isBlocked)
+        private void BlockUI(bool isBlocked)
         {
             isBlocked = !isBlocked;
             lv_SourceList.IsEnabled = isBlocked;
@@ -191,22 +185,23 @@ namespace Mosaic
             b_AddNewSource.IsEnabled = isBlocked;
         }
 
-        private void showIndexingUI(bool show)
+        private void ShowIndexingUI(bool show)
         {
             var visibility = show ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
             g_IndexingGrid.Visibility = visibility;
+            Owner.TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.Normal;
         }      
   
-        private void showErrorMessage(ErrorType errorType, String parameter = "")
+        private void ShowErrorMessage(ErrorType errorType, String parameter = "")
         {
-            tblock_ErrorMessage.Text = ErrorMessage.getMessage(errorType);
+            tblock_ErrorMessage.Text = ErrorMessage.GetMessage(errorType);
             if (errorType == ErrorType.PartiallyIndexed) // Add number of images that cannot be accessed
                 tblock_ErrorMessage.Text = parameter + " " + tblock_ErrorMessage.Text;
             tblock_ErrorMessage.Visibility = System.Windows.Visibility.Visible;
             System.Media.SystemSounds.Beep.Play();
         }
 
-        private void hideErrorMessage()
+        private void HideErrorMessage()
         {
             tblock_ErrorMessage.Visibility = System.Windows.Visibility.Collapsed;
         }        
@@ -215,7 +210,7 @@ namespace Mosaic
         {
             if(indexer != null)
             {
-                showErrorMessage(ErrorType.IndexingInProgress);                
+                ShowErrorMessage(ErrorType.IndexingInProgress);                
                 e.Cancel = true;
             }
         }

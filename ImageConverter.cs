@@ -2,10 +2,7 @@
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
-using System.Windows;
-using System.Windows.Interop;
 using System.Windows.Media.Imaging;
-using System.Runtime.InteropServices;
 
 namespace Mosaic
 {
@@ -54,7 +51,9 @@ namespace Mosaic
                 encoder.Save(outStream);
                 using (Bitmap bitmap = new Bitmap(outStream))
                 {
-                    return new Bitmap(bitmap);
+                    Bitmap result = new Bitmap(bitmap);
+                    result.SetResolution((float)bi.DpiX, (float)bi.DpiY);
+                    return result;
                 }
             }
         }
@@ -63,7 +62,7 @@ namespace Mosaic
         {
             using (MemoryStream outStream = new MemoryStream())
             {
-                b.Save(outStream, ImageFormat.Bmp);
+                b.Save(outStream, ImageFormat.Jpeg);
                 outStream.Position = 0;
 
                 BitmapImage bi = new BitmapImage();

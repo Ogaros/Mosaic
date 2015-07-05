@@ -1,10 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Net;
-using System.IO;
 
 
 namespace Mosaic
@@ -19,11 +15,11 @@ namespace Mosaic
             client.Headers.Add("Authorization", "Client-ID " + imgurClientID);
         }
 
-        public String getGalleryJson(String galleryID)
+        public String GetGalleryJson(String galleryID)
         {
             String url = "https://api.imgur.com/3/gallery/" + galleryID;
             String jsonGallery = client.DownloadString(url);
-            int responseStatusCode = JsonParser.getStatusCode(jsonGallery);
+            int responseStatusCode = JsonParser.GetStatusCode(jsonGallery);
             if (responseStatusCode != 200)
                 throw new WebException("Imgur returned error code: " + responseStatusCode.ToString());
             int[] arr = new int[10];
@@ -31,17 +27,17 @@ namespace Mosaic
             return jsonGallery;           
         }
         
-        public String getAlbumJson(String alumID)
+        public String GetAlbumJson(String alumID)
         {
             String url = "https://api.imgur.com/3/album/" + alumID;
             String jsonAlbum = client.DownloadString(url);
-            int responseStatusCode = JsonParser.getStatusCode(jsonAlbum);
+            int responseStatusCode = JsonParser.GetStatusCode(jsonAlbum);
             if (responseStatusCode != 200)
                 throw new WebException("Imgur returned error code: " + responseStatusCode.ToString());
             return jsonAlbum;
         }
 
-        public String getLimitsJson()
+        public String GetLimitsJson()
         {
             String url = "https://api.imgur.com/3/credits";
             return client.DownloadString(url);
@@ -49,11 +45,17 @@ namespace Mosaic
 
         public void Dispose()
         {
-            if (client != null)
+            Dispose(true);
+            GC.SuppressFinalize(this);
+            
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if(disposing)
             {
-                client.Dispose();
-                client = null;
-                GC.SuppressFinalize(this);
+                if(client != null)
+                    client.Dispose();
             }
         }
     }

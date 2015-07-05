@@ -1,53 +1,66 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.IO;
+using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.IO;
 using System.Security.Cryptography;
-using System.ComponentModel;
-using System.Windows.Media.Imaging;
 using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Media.Imaging;
 
 
 namespace Mosaic
 {
-    internal class ImageIndexer : INotifyPropertyChanged
+    internal class ImageIndexer : INotifyPropertyChanged, IDisposable
     {
         public event PropertyChangedEventHandler PropertyChanged;
-        public int progress { get { return _progress; } private set { _progress = value; } } // number of indexed images
-        private volatile int _progress;
-        public int currentImageNumber { get; private set; } // same as progress but increased before image is processed (needed for displaying "X out of imageCount images")
-        public int imageCount { get; private set; }
-        public String currentImagePath { get; private set; }        
-        public bool stopIndexing = false;
-        public int failedToIndex { get; private set; }
-        public ErrorType errorStatus { get; private set; }
+        public int Progress { get { return progress; } } // number of indexed images        
+        public int CurrentImageNumber { get; private set; } // same as progress but increased before image is processed (needed for displaying "X out of imageCount images")
+        public int ImageCount { get; private set; }
+        public String CurrentImagePath { get; private set; }
+        public bool StopIndexing { get; set; }
+        public int FailedToIndex { get; private set; } // number of images indexing of which has failed for whatever reason
+        public ErrorType ErrorStatus { get; private set; }
+
+        private volatile int progress;
         private String[] imageList;
         private SemaphoreSlim semaphore;
         private int threadCount;
 
         public ImageIndexer()
         {
-            imageCount = 1; // To make progress bar start empty 
+            ImageCount = 1; // To make progress bar start empty 
             threadCount = Environment.ProcessorCount;
-            semaphore = new SemaphoreSlim(threadCount, threadCount);
+            semaphore = new SemaphoreSlim(threadCount, threadCount);            
         }
 
-        public async void indexImages(ImageSource source)
+        public void Dispose()
         {
-            if (DBManager.containsSource(source))
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if(disposing)
             {
-                errorStatus = ErrorType.SourceAlreadyIndexed;
+                if (semaphore != null)
+                    semaphore.Dispose();
+            }
+        }
+
+        public void IndexImages(ImageSource source)
+        {
+            if (DBManager.ContainsSource(source))
+            {
+                ErrorStatus = ErrorType.SourceAlreadyIndexed;
                 return;
             }
-            stopIndexing = false;            
-            _progress = 0;
-            currentImageNumber = 0;
-            failedToIndex = 0;
-            errorStatus = ErrorType.NoErrors;
+            StopIndexing = false;            
+            progress = 0;
+            CurrentImageNumber = 0;
+            FailedToIndex = 0;
+            ErrorStatus = ErrorType.NoErrors;
             using (WebManager webManager = new WebManager())
             {
                 switch (source.type)
@@ -59,82 +72,54 @@ namespace Mosaic
                         }
                     case ImageSource.Type.ImgurAlbum:
                         {
-                            String jsonAlbum = null;
-                            try
-                            {
-                                jsonAlbum = webManager.getAlbumJson(source.id);
-                            }
-                            catch (System.Net.WebException)
-                            {
-                                errorStatus = ErrorType.CantAccessSource;
+                            ErrorStatus = FillImageListFromImgur(ref source, webManager.GetAlbumJson); // also sets up source name
+                            if (ErrorStatus != ErrorType.NoErrors)
                                 return;
-                            }
-                            ImgurGallery gallery = JsonParser.deserializeImgurGallery(jsonAlbum);
-                            source.name = gallery.title;
-                            imageList = new String[gallery.images_count];
-                            for (int i = 0; i < gallery.images_count; i++)
-                            {
-                                imageList[i] = gallery.images[i].link;
-                            }
                             break;
                         }
                     case ImageSource.Type.ImgurGallery:
                         {
-                            String jsonGallery = null;
-                            try
-                            {
-                                jsonGallery = webManager.getGalleryJson(source.id);
-                            }
-                            catch (System.Net.WebException)
-                            {
-                                errorStatus = ErrorType.CantAccessSource;
+                            ErrorStatus = FillImageListFromImgur(ref source, webManager.GetGalleryJson); // also sets up source name
+                            if (ErrorStatus != ErrorType.NoErrors)
                                 return;
-                            }
-                            ImgurGallery gallery = JsonParser.deserializeImgurGallery(jsonGallery);
-                            source.name = gallery.title;
-                            imageList = new String[gallery.images_count];
-                            for (int i = 0; i < gallery.images_count; i++)
-                            {
-                                imageList[i] = gallery.images[i].link;
-                            }
                             break;
                         }
                 }
             }
-            DBManager.addSource(source);
-            imageCount = imageList.Length;
-            source.imageCount = imageCount;
+            DBManager.AddSource(source);
+            ImageCount = imageList.Length;
+            source.imageCount = ImageCount;
             OnPropertyChanged("imageCount");            
             foreach (String imagePath in imageList)
             {                
-                Task.Run(() => indexImage(imagePath, source));                              
+                Task.Run(() => IndexImage(imagePath, source));                              
             }
-            while ((stopIndexing == false && _progress < imageCount) || (stopIndexing == true && semaphore.CurrentCount != threadCount))
+            while ((StopIndexing == false && progress < ImageCount) || (StopIndexing == true && semaphore.CurrentCount != threadCount))
             {
                 Thread.Sleep(500);
             }
-            if (stopIndexing == true)
+            if (StopIndexing == true)
             {
-                DBManager.removeSource(source);
-                errorStatus = ErrorType.IndexingCancelled;
+                DBManager.RemoveSource(source);
+                ErrorStatus = ErrorType.IndexingCancelled;
                 return;
             }  
-            if (failedToIndex > 0)
-                errorStatus = ErrorType.PartiallyIndexed;
+            if (FailedToIndex > 0)
+                ErrorStatus = ErrorType.PartiallyIndexed;
         }
 
-        private void indexImage(String imagePath, ImageSource source)
+        private void IndexImage(String imagePath, ImageSource source)
         {
             semaphore.Wait();
-            if (stopIndexing == true)
+            if (StopIndexing == true)
             {
                 semaphore.Release();
                 return;
             }
-            ++currentImageNumber;
-            OnPropertyChanged("currentImageNumber");
-            currentImagePath = imagePath;
-            OnPropertyChanged("currentImagePath");
+            ++CurrentImageNumber;
+            OnPropertyChanged("CurrentImageNumber");
+            CurrentImagePath = imagePath;
+            OnPropertyChanged("CurrentImagePath");
             Bitmap image;
             if(source.type == ImageSource.Type.Directory)
             {
@@ -144,7 +129,7 @@ namespace Mosaic
                 }
                 catch (System.IO.FileNotFoundException)
                 {
-                    ++failedToIndex;
+                    ++FailedToIndex;
                     return;
                 }
             }
@@ -158,22 +143,43 @@ namespace Mosaic
                 }
                 catch(System.IO.FileNotFoundException)
                 {
-                    ++failedToIndex;
+                    ++FailedToIndex;
                     return;
                 }                               
             }
-            Color averageColor = getAverageColor(image);
-            DBManager.addImage(source, imagePath, averageColor, getImageHash(image));
+            Color averageColor = GetAverageColor(image);
+            DBManager.AddImage(source, imagePath, averageColor, GetImageHash(image));
             image.Dispose();
-            if (stopIndexing == false)
+            if (StopIndexing == false)
             {
-                ++_progress;
-                OnPropertyChanged("progress");
+                ++progress;
+                OnPropertyChanged("Progress");
             }
             semaphore.Release();
         }
 
-        private static String getImageHash(Bitmap image)
+        private ErrorType FillImageListFromImgur(ref ImageSource source, Func<String, String> getGalleryJson)
+        {
+            String jsonGallery = null;
+            try
+            {
+                jsonGallery = getGalleryJson(source.id);
+            }
+            catch (System.Net.WebException)
+            {
+                return ErrorType.CantAccessSource;
+            }
+            ImgurGallery gallery = JsonParser.DeserializeImgurGallery(jsonGallery);
+            source.name = gallery.title;
+            imageList = new String[gallery.images_count];
+            for (int i = 0; i < gallery.images_count; i++)
+            {
+                imageList[i] = gallery.images[i].link;
+            }
+            return ErrorType.NoErrors;
+        }
+
+        private static String GetImageHash(Bitmap image)
         {
             using (SHA256 sha = SHA256Managed.Create())
             {
@@ -186,7 +192,7 @@ namespace Mosaic
             }
         }
 
-        public static Color getAverageColor(Bitmap image)
+        public static Color GetAverageColor(Bitmap image)
         {
             long R = 0, G = 0, B = 0;
             Color tempColor;

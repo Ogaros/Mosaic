@@ -15,7 +15,7 @@ namespace Mosaic
     }
     internal static class ErrorMessage
     {
-        public static String getMessage(ErrorType type)
+        public static String GetMessage(ErrorType type)
         {
             return errorMessages[type];
         }

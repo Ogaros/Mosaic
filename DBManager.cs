@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.IO;
 using System.Data.SQLite;
 using System.Drawing;
+using System.IO;
 
 namespace Mosaic
 {
@@ -14,11 +11,11 @@ namespace Mosaic
         public const String dbName = "IndexedImageSources.db";
         private static SQLiteConnection connection = new SQLiteConnection("DataSource=" + dbName + ";Version=3;");
 
-        public static void openDBConnection()
+        public static void OpenDBConnection()
         {
             if(File.Exists(dbName) == false)
             {
-                createDatabase();
+                CreateDatabase();
             }
             else
             {
@@ -26,7 +23,7 @@ namespace Mosaic
             }
         }
 
-        public static void closeDBConnection()
+        public static void CloseDBConnection()
         {
             if(connection.State != System.Data.ConnectionState.Closed)
             {
@@ -34,7 +31,7 @@ namespace Mosaic
             }
         }
 
-        public static int countImages(ImageSource source)
+        public static int CountImages(ImageSource source)
         {
             String sql = "SELECT Count(*) FROM Images " +
                          "INNER JOIN Sources ON Sources.id = Images.sourceId AND Sources.path = @path";
@@ -46,7 +43,7 @@ namespace Mosaic
             }
         }
 
-        public static List<ImageSource> getUsedSources()
+        public static List<ImageSource> GetUsedSources()
         {
             String sql = "SELECT * FROM Sources Where isUsed = 1";
             using (SQLiteCommand cmd = new SQLiteCommand(sql, connection))
@@ -57,7 +54,7 @@ namespace Mosaic
                     while (reader.Read())
                     {
                         ImageSource source = new ImageSource((String)reader["name"], (String)reader["path"], (ImageSource.Type)(Int64)reader["type"], 0, true);
-                        source.imageCount = countImages(source);
+                        source.imageCount = CountImages(source);
                         sourceList.Add(source);
                     }
                     return sourceList;
@@ -65,7 +62,7 @@ namespace Mosaic
             }
         }
 
-        public static List<ImageSource> getAllSources()
+        public static List<ImageSource> GetAllSources()
         {
             String sql = "SELECT * FROM Sources";
             using (SQLiteCommand cmd = new SQLiteCommand(sql, connection))
@@ -77,7 +74,7 @@ namespace Mosaic
                     {
                         ImageSource source = new ImageSource((String)reader["name"], (String)reader["path"], 
                                                              (ImageSource.Type)(Int64)reader["type"], 0, (bool)reader["isUsed"]);
-                        source.imageCount = countImages(source);
+                        source.imageCount = CountImages(source);
                         sourceList.Add(source);
                     }
                     return sourceList;
@@ -85,7 +82,7 @@ namespace Mosaic
             }
         }
 
-        public static List<Image> getImages(List<ImageSource> sources, Color c, int error)
+        public static List<Image> GetImages(List<ImageSource> sources, Color c, int error)
         {
             if(sources.Count == 0)
                 return new List<Image>();
@@ -121,9 +118,9 @@ namespace Mosaic
             }
         }
 
-        public static void addImage(ImageSource source, String path, Color c, String hashcode)
+        public static void AddImage(ImageSource source, String path, Color c, String hashcode)
         {
-            int sourceId = getSourceId(source);
+            int sourceId = GetSourceId(source);
             String sql = "INSERT INTO Images (sourceId, path, red, green, blue, hashcode) " +
                          "VALUES (@sourceId, @path, @red, @green, @blue, @hashcode)";
             using (SQLiteCommand cmd = new SQLiteCommand(sql, connection))
@@ -138,7 +135,7 @@ namespace Mosaic
             }            
         }
 
-        public static void addSource(ImageSource source)
+        public static void AddSource(ImageSource source)
         {
             String sql = "INSERT INTO Sources (path, name, type, isUsed) VALUES (@path, @name, @type, @isUsed)";
             using (SQLiteCommand cmd = new SQLiteCommand(sql, connection))
@@ -151,7 +148,7 @@ namespace Mosaic
             }            
         }
 
-        public static bool containsSource(ImageSource source)
+        public static bool ContainsSource(ImageSource source)
         {
             String sql = "SELECT * FROM Sources WHERE path = @path";
             using (SQLiteCommand cmd = new SQLiteCommand(sql, connection))
@@ -164,7 +161,7 @@ namespace Mosaic
             }
         }
 
-        public static ImageSource.Type getImageSourceType(String imagePath)
+        public static ImageSource.Type GetImageSourceType(String imagePath)
         {
             String sql = "SELECT type FROM Sources " +
                          "INNER JOIN Images ON Images.path = @path AND Images.sourceId = Sources.id";
@@ -176,7 +173,7 @@ namespace Mosaic
             }
         }
 
-        public static void updateIsUsedField(ImageSource source)
+        public static void UpdateIsUsedField(ImageSource source)
         {
             String sql = "UPDATE Sources SET isUsed = @isUsed WHERE path = @path";
             using (SQLiteCommand cmd = new SQLiteCommand(sql, connection))
@@ -187,26 +184,26 @@ namespace Mosaic
             }            
         }
 
-        public static void removeSource(ImageSource source)
+        public static void RemoveSource(ImageSource source)
         {
-            int sourceId = getSourceId(source);
+            int sourceId = GetSourceId(source);
             String sql = "DELETE FROM Sources WHERE id = @id";
             using (SQLiteCommand cmd = new SQLiteCommand(sql, connection))
             {
                 cmd.Parameters.Add(new SQLiteParameter("@id", sourceId));
                 cmd.ExecuteNonQuery();             
-                removeImages(sourceId);
+                RemoveImages(sourceId);
             }
         }
 
-        private static void createDatabase()
+        private static void CreateDatabase()
         {
             SQLiteConnection.CreateFile(dbName);
             connection.Open();
-            createTables();
+            CreateTables();
         }
 
-        private static void createTables()
+        private static void CreateTables()
         {
             String sql = "CREATE TABLE Sources (id INTEGER PRIMARY KEY ASC, path TEXT, name TEXT, type INTEGER, isUsed BOOLEAN);";
             SQLiteCommand cmd = null;
@@ -221,7 +218,7 @@ namespace Mosaic
             }
         }
 
-        private static int getSourceId(ImageSource source)
+        private static int GetSourceId(ImageSource source)
         {
             String sql = "SELECT id FROM Sources WHERE path = @path AND name = @name AND type = @type";
             using (SQLiteCommand cmd = new SQLiteCommand(sql, connection))
@@ -234,7 +231,7 @@ namespace Mosaic
             }
         }  
       
-        private static void removeImages(int sourceId)
+        private static void RemoveImages(int sourceId)
         {
             String sql = "DELETE FROM Images WHERE sourceId = @id";
             using (SQLiteCommand cmd = new SQLiteCommand(sql, connection))

@@ -1,13 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Media.Imaging;
 using System.Windows.Media;
-using Microsoft.Win32;
-using System.Drawing.Imaging;
-using System.Collections.Generic;
-using System.IO;
+using System.Windows.Media.Imaging;
 
 namespace Mosaic
 {
@@ -26,18 +24,19 @@ namespace Mosaic
         private double dragVerticalOffset = 1;
         private bool isDragEnabled = false;
         private List<ImageSource> imageSources;
+        private bool repeatImageSetup = true;
 
         public MainWindow()
         {
             InitializeComponent();
-            DBManager.openDBConnection();
-            imageSources = DBManager.getUsedSources();
+            DBManager.OpenDBConnection();
+            imageSources = DBManager.GetUsedSources();
             DataContext = mosaicBuilder;
             tb_ResolutionW.Text = SystemParameters.VirtualScreenWidth.ToString();
             tb_ResolutionH.Text = SystemParameters.VirtualScreenHeight.ToString();
         }
 
-        private void blockUI(bool isBlocked)
+        private void BlockUI(bool isBlocked)
         {
             isBlocked = !isBlocked;
             b_Construct.IsEnabled = isBlocked;
@@ -53,15 +52,25 @@ namespace Mosaic
         }
 
         private async void b_Construct_Click(object sender, RoutedEventArgs e)
-        {
-            hideErrorMessage();
-            blockUI(true);                      
+        {            
+            HideErrorMessage();
+            BlockUI(true);
             BitmapImage bi = null;
             int secHorizontal, secVertical, resolutionW, resolutionH;
             try
             {
                 bi = new BitmapImage(new Uri(tb_URLBox.Text));
-                mosaicBuilder.setImage(bi);
+                mosaicBuilder.SetImage(bi);
+                // for some reason first time bitmap image is set, the resolution is wrong and the resulting mosaic looks bigger than the original image
+                // of the same size. I don't know why it's happening so i just restart the builder after a short delay when the button is clicked for the first time.
+                // Restarting instantly doesn't work.
+                if (repeatImageSetup)
+                {
+                    await Task.Delay(500);
+                    repeatImageSetup = false;
+                    b_Construct_Click(sender, e);
+                    return;
+                }
                 secHorizontal = Convert.ToInt32(tb_SectorsNumHorizontal.Text);
                 secVertical = Convert.ToInt32(tb_SectorsNumVertical.Text);
                 resolutionW = Convert.ToInt32(tb_ResolutionW.Text);
@@ -72,70 +81,62 @@ namespace Mosaic
                 if (ex is UriFormatException)
                 {
                     if (tb_URLBox.Text == "")
-                        showErrorMessage(ErrorType.EmptyImageURI);
+                        ShowErrorMessage(ErrorType.EmptyImageURI);
                     else
-                        showErrorMessage(ErrorType.WrongImageURI);
+                        ShowErrorMessage(ErrorType.WrongImageURI);
                 }
                 else if (ex is System.IO.FileNotFoundException || ex is System.Net.WebException)
-                    showErrorMessage(ErrorType.CantAccessImage);
+                    ShowErrorMessage(ErrorType.CantAccessImage);
                 else if (ex is FormatException)
-                    showErrorMessage(ErrorType.WrongMosaicParameter);
+                    ShowErrorMessage(ErrorType.WrongMosaicParameter);
                 else
                     throw;
-                blockUI(false);
+                BlockUI(false);
                 return;
             }
             if (resolutionH == 0 || resolutionW == 0)
             {
-                showErrorMessage(ErrorType.ZeroMosaicResolution);
-                blockUI(false);
+                ShowErrorMessage(ErrorType.ZeroMosaicResolution);
+                BlockUI(false);
                 return;
-            }
-            setupProgressBar(secHorizontal * secVertical);
-            TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.Normal;
+            }            
+            ShowProgressBar();           
             l_StatusLabel.Content = "Constructing mosaic...";
-            await Task.Run(() => mosaicBuilder.buildMosaic(resolutionW, resolutionH, secHorizontal, secVertical, imageSources));       
-            blockUI(false);
-            pb_MosaicProgress.Visibility = Visibility.Collapsed;
-            if(mosaicBuilder.errorStatus != ErrorType.NoErrors)
+            await Task.Run(() => mosaicBuilder.BuildMosaic(resolutionW, resolutionH, secHorizontal, secVertical, imageSources));       
+            BlockUI(false);
+            HideProgressBar();
+            if(mosaicBuilder.ErrorStatus != ErrorType.NoErrors)
             {
-                showErrorMessage(mosaicBuilder.errorStatus);
+                ShowErrorMessage(mosaicBuilder.ErrorStatus);
                 return;
             }
 
             if((bool)rb_MosaicView.IsChecked)
-                i_Image.Source = mosaicBuilder.getMosaic();
+                i_Image.Source = mosaicBuilder.Mosaic;
             else
                 rb_MosaicView.IsChecked = true;
 
             zoomIncrement = zoomIncrementPixels / i_Image.Source.Width;
             TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.None;
             l_StatusLabel.Content = "Mosaic constructed";
-        }
-
-        private void setupProgressBar(int maximum)
-        {
-            pb_MosaicProgress.Maximum = maximum;
-            pb_MosaicProgress.Value = 0;
-            pb_MosaicProgress.Visibility = Visibility.Visible;
-        }        
+        }       
 
         private void b_SelectSources_Click(object sender, RoutedEventArgs e)
         {
-            hideErrorMessage();
+            HideErrorMessage();
             ImageSourceWindow window = new ImageSourceWindow();
             window.Owner = this;
             window.Left = this.Left + ((this.Width / 2) - (window.Width / 2));
             window.Top = this.Top + ((this.Height / 2) - (window.Height / 2));                
             if(window.ShowDialog() == true)
             {
-                imageSources = DBManager.getUsedSources();
+                imageSources = DBManager.GetUsedSources();
             }   
         }
 
         private void b_SaveMosaic_Click(object sender, RoutedEventArgs e)
         {
-            hideErrorMessage();
+            HideErrorMessage();
             var dialog = new Microsoft.Win32.SaveFileDialog();
             dialog.Filter = "JPEG image (*.jpg;*.jpeg)|*.jpg;*.jpeg|" +
                             "Portable Network Graphics (*.png)|*.png|" +
@@ -164,7 +165,7 @@ namespace Mosaic
                         encoder = new GifBitmapEncoder();
                         break;
                 }
-                encoder.Frames.Add(BitmapFrame.Create(mosaicBuilder.getMosaic()));
+                encoder.Frames.Add(BitmapFrame.Create(mosaicBuilder.Mosaic));
                 using (FileStream stream = new FileStream(dialog.FileName, FileMode.Create))
                 {
                     encoder.Save(stream);
@@ -173,19 +174,30 @@ namespace Mosaic
             l_StatusLabel.Content = "Mosaic saved as " + dialog.FileName;
         }        
 
-        private void showErrorMessage(ErrorType errorType)
+        private void ShowErrorMessage(ErrorType errorType)
         {
             l_StatusLabel.Content = "There was an error during mosaic construction";
-            tblock_ErrorMessage.Text = ErrorMessage.getMessage(errorType);
+            tblock_ErrorMessage.Text = ErrorMessage.GetMessage(errorType);
             tblock_ErrorMessage.Visibility = System.Windows.Visibility.Visible;
             System.Media.SystemSounds.Beep.Play();
         }
 
-        private void hideErrorMessage()
+        private void HideErrorMessage()
         {
             l_StatusLabel.Content = "";
             tblock_ErrorMessage.Visibility = System.Windows.Visibility.Hidden;
         }        
+
+        private void ShowProgressBar()
+        {            
+            pb_MosaicProgress.Visibility = System.Windows.Visibility.Visible;
+            TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.Normal;
+        }
+
+        private void HideProgressBar()
+        {
+            pb_MosaicProgress.Visibility = System.Windows.Visibility.Collapsed;
+        }
 
         private void ScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
@@ -230,20 +242,21 @@ namespace Mosaic
 
         private void rb_MosaicView_Checked(object sender, RoutedEventArgs e)
         {
-            i_Image.Source = mosaicBuilder.getMosaic();
+            i_Image.Source = mosaicBuilder.Mosaic;
         }
 
         private void rb_OriginalImageView_Checked(object sender, RoutedEventArgs e)
         {
-            i_Image.Source = mosaicBuilder.getOriginal();
+            i_Image.Source = mosaicBuilder.Original;
         }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            DBManager.closeDBConnection();
+            DBManager.CloseDBConnection();
+            mosaicBuilder.Dispose();
         }
 
-        private static void checkIfNumeric(TextCompositionEventArgs e)
+        private static void CheckIfNumeric(TextCompositionEventArgs e)
         {
             char c = Convert.ToChar(e.Text);
             if (Char.IsNumber(c))
@@ -252,49 +265,49 @@ namespace Mosaic
                 e.Handled = true;
         }
 
-        private static void checkIfSpace(KeyEventArgs e)
+        private static void CheckIfSpace(KeyEventArgs e)
         {
             e.Handled = (e.Key == Key.Space);
         }
 
         private void tb_SectorsNumHorizontal_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
-            checkIfNumeric(e);
+            CheckIfNumeric(e);
         }
 
         private void tb_SectorsNumVertical_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
-            checkIfNumeric(e);
+            CheckIfNumeric(e);
         }
 
         private void tb_ResolutionW_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
-            checkIfNumeric(e);
+            CheckIfNumeric(e);
         }
 
         private void tb_ResolutionH_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
-            checkIfNumeric(e);
+            CheckIfNumeric(e);
         }
 
         private void tb_SectorsNumHorizontal_PreviewKeyDown(object sender, KeyEventArgs e)
         {
-            checkIfSpace(e);
+            CheckIfSpace(e);
         }
 
         private void tb_SectorsNumVertical_PreviewKeyDown(object sender, KeyEventArgs e)
         {
-            checkIfSpace(e);
+            CheckIfSpace(e);
         }
 
         private void tb_ResolutionW_PreviewKeyDown(object sender, KeyEventArgs e)
         {
-            checkIfSpace(e);
+            CheckIfSpace(e);
         }
 
         private void tb_ResolutionH_PreviewKeyDown(object sender, KeyEventArgs e)
         {
-            checkIfSpace(e);
+            CheckIfSpace(e);
         }
 
         private void pb_MosaicProgress_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)

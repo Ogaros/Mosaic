@@ -59,7 +59,7 @@
         <StatusBar Margin="0" Grid.Row="2" Height="25" Grid.ColumnSpan="2">
             <StatusBarItem Padding="10,0,0,0">
                 <StackPanel Orientation="Horizontal" Margin="0">
-                    <ProgressBar x:Name="pb_MosaicProgress" Value="{Binding progress}" Width="138" Margin="0,0,5,0" Visibility="Collapsed" ValueChanged="pb_MosaicProgress_ValueChanged"/>
+                    <ProgressBar x:Name="pb_MosaicProgress" Value="{Binding Progress, Mode=OneWay}" Maximum="{Binding SectorsCount, Mode=OneWay}" Width="138" Margin="0,0,5,0" Visibility="Collapsed" ValueChanged="pb_MosaicProgress_ValueChanged"/>
                     <Label x:Name="l_StatusLabel" HorizontalAlignment="Left" VerticalAlignment="Top" Padding="0"/>                    
                 </StackPanel>
             </StatusBarItem>

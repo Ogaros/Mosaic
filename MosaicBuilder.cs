@@ -1,41 +1,54 @@
 ﻿using System;
-using System.Drawing;
-using System.Drawing.Imaging;
-using System.IO;
-using System.Windows;
-using System.Windows.Interop;
-using System.Windows.Media.Imaging;
-using System.ComponentModel;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Drawing;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Media.Imaging;
 
 namespace Mosaic
 {
-    internal class Image : IEquatable<Image>
+    internal class Image : IEquatable<Image>, IDisposable
     {
-        public Image(String p, Color c)
+        public Image(String path, Color color)
         {
-            path = p;
-            color = c;
+            this.path = path;
+            this.color = color;
             bitmap = null;
         }
         public bool Equals(Image other)
         {
-            return other.path == this.path;
+            return other.path == this.path;            
+        }
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        protected virtual void Dispose(bool disposing)
+        {
+            if(disposing)
+            {
+                if (bitmap != null)
+                    bitmap.Dispose();
+            }
         }
         public String path;
         public Color color;
         public Bitmap bitmap;
     }
 
-    class MosaicBuilder : INotifyPropertyChanged
+    class MosaicBuilder : INotifyPropertyChanged, IDisposable
     {
         public event PropertyChangedEventHandler PropertyChanged;
-        public int progress { get{return _progress;} set{_progress = value;} }
-        private volatile int _progress;
-        public BitmapImage original { get; private set; }
-        public BitmapImage mosaic { get; private set; }
+        public int Progress { get { return progress; } }
+        public int SectorsCount { get; private set; }
+        public BitmapImage Original { get; private set; }
+        public BitmapImage Mosaic { get; private set; }
+        public ErrorType ErrorStatus { get; private set; }
+
+        private volatile int progress;
         private Bitmap originalBitmap;
         private Bitmap mosaicCanvas;
         private List<Image> usedImages;
@@ -43,52 +56,61 @@ namespace Mosaic
         private int sectorWidthMosaic;
         private int sectorHeightMosaic;
         private const int colorError = 15; // error for the average color. separate for each of the primary colors
-        private Random rand = new Random();
-        public ErrorType errorStatus { get; private set; }
+        private Random rand = new Random();        
         private SemaphoreSlim semaphore;
         private int threadCount;
 
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                if (semaphore != null)
+                    semaphore.Dispose();
+                if (originalBitmap != null)
+                    originalBitmap.Dispose();
+                if (mosaicCanvas != null)
+                    mosaicCanvas.Dispose();
+            }
+        }
+
         public MosaicBuilder() 
         {
+            SectorsCount = 1; // To make progress bar start empty
             threadCount = Environment.ProcessorCount;
             semaphore = new SemaphoreSlim(threadCount, threadCount);
         }
 
         public MosaicBuilder(Bitmap bitmap)
         {
-            setImage(bitmap);
+            SetImage(bitmap);
         }
         public MosaicBuilder(BitmapImage bitmapImage)
         {
-            setImage(bitmapImage);
+            SetImage(bitmapImage);
         }
 
-        public void setImage(Bitmap bitmap)
+        public void SetImage(Bitmap bitmap)
         {
             originalBitmap = (Bitmap)bitmap.Clone();
-            original = ImageConverter.BitmapToBitmapImage(bitmap);
+            Original = ImageConverter.BitmapToBitmapImage(bitmap);
         }
-        public void setImage(BitmapImage bitmapImage)
+        public void SetImage(BitmapImage bitmapImage)
         {
             originalBitmap = ImageConverter.BitmapImageToBitmap(bitmapImage);
-            original = bitmapImage.Clone();
+            Original = bitmapImage.CloneCurrentValue();
         }
 
-        public BitmapImage getOriginal()
+        public void BuildMosaic(int resolutionW, int resolutionH, int horSectors, int verSectors, List<ImageSource> imageSources)
         {
-            return original;
-        }
-
-        public BitmapImage getMosaic()
-        {
-            return mosaic;
-        }
-
-        public async void buildMosaic(int resolutionW, int resolutionH, int horSectors, int verSectors, List<ImageSource> imageSources)
-        {
-            errorStatus = ErrorType.NoErrors;
+            ErrorStatus = ErrorType.NoErrors;
             this.imageSources = imageSources;
-            progress = 0;
+            progress = 0;            
             // this list holds images that was used already to avoid reopening(or redownloading) and resizing them again
             usedImages = new List<Image>();
             // calculate size of the sectors that will be red from the original image with given parameters 
@@ -97,7 +119,7 @@ namespace Mosaic
             int sectorHeightOriginal = originalBitmap.Height / verSectors;
             if (sectorWidthOriginal == 0 || sectorHeightOriginal == 0)
             {
-                errorStatus = ErrorType.TooManySectors;
+                ErrorStatus = ErrorType.TooManySectors;
                 return;
             }
             // adjust the number of sectors to accomodate for the lost fractional part during sector size calculation 
@@ -105,6 +127,8 @@ namespace Mosaic
             // this is done to avoid obvious image cropping
             horSectors = originalBitmap.Width / sectorWidthOriginal;
             verSectors = originalBitmap.Height / sectorHeightOriginal;
+            SectorsCount = horSectors * verSectors;
+            OnPropertyChanged("SectorsCount");
             // calculate size of sectors that will be placed on the mosaic canvas
             // sector sizez are rounded up to avoid black bars on the mosaic if original sector size can't fill the whole canvas
             sectorWidthMosaic = (int)Math.Ceiling((double)resolutionW / (double)horSectors);
@@ -122,23 +146,10 @@ namespace Mosaic
                     for (int yOrig = 0, yMos = 0, verSecCount = 0; verSecCount < verSectors; yOrig += sectorHeightOriginal, yMos += sectorHeightMosaic, verSecCount++)
                     {
                         int _xOrig = xOrig, _xMos = xMos, _yOrig = yOrig, _yMos = yMos;
-                        Task.Run(() => replaceSector(_xOrig, _xMos, _yOrig, _yMos, sectorWidthOriginal, sectorHeightOriginal));
-                        /*
-                        Bitmap sector = getSector(xOrig, yOrig, sectorWidthOriginal, sectorHeightOriginal);
-
-                        fillSector(ref sector);
-
-                        Graphics g = Graphics.FromImage(mosaicCanvas);
-                        g.DrawImage(sector, xMos, yMos);
-                        g.Dispose();
-
-                        ++_progress;
-                        OnPropertyChanged("progress");
-                        sector.Dispose();
-                         */
+                        Task.Run(() => ReplaceSector(_xOrig, _xMos, _yOrig, _yMos, sectorWidthOriginal, sectorHeightOriginal));
                     }
                 }
-                while(_progress < horSectors * verSectors)
+                while (progress < SectorsCount)
                 {
                     Thread.Sleep(500);
                 }
@@ -148,8 +159,8 @@ namespace Mosaic
                     Graphics gr = Graphics.FromImage(mosaicBitmap);
                     gr.DrawImage(mosaicCanvas, 0, 0, resolutionW, resolutionH);
                     gr.Dispose();
-                    mosaic = ImageConverter.BitmapToBitmapImage(mosaicBitmap);
-                    mosaic.Freeze();
+                    Mosaic = ImageConverter.BitmapToBitmapImage(mosaicBitmap);
+                    Mosaic.Freeze();
 
                     originalBitmap.Dispose();
                     usedImages.Clear();
@@ -157,26 +168,26 @@ namespace Mosaic
             }
         }
         
-        private void replaceSector(int xOrig, int xMos, int yOrig, int yMos, int sectorWidth, int sectorHeight)
+        private void ReplaceSector(int xOrig, int xMos, int yOrig, int yMos, int sectorWidth, int sectorHeight)
         {
             semaphore.Wait();
-            Bitmap sector = getSector(xOrig, yOrig, sectorWidth, sectorHeight);
-            fillSector(ref sector);
+            Bitmap sector = GetSector(xOrig, yOrig, sectorWidth, sectorHeight);
+            FillSector(ref sector);
             lock (mosaicCanvas)
             {
                 Graphics g = Graphics.FromImage(mosaicCanvas);
                 g.DrawImage(sector, xMos, yMos);
                 g.Dispose();
             }
-            ++_progress;
-            OnPropertyChanged("progress");
+            ++progress;
+            OnPropertyChanged("Progress");
             sector.Dispose();
             semaphore.Release();
         }
 
-        private void fillSector(ref Bitmap sector)
+        private void FillSector(ref Bitmap sector)
         {
-            Color color = ImageIndexer.getAverageColor(sector);
+            Color color = ImageIndexer.GetAverageColor(sector);
             sector.Dispose();
             lock (originalBitmap)
             {
@@ -184,7 +195,7 @@ namespace Mosaic
 
                 sector.SetResolution(originalBitmap.HorizontalResolution, originalBitmap.VerticalResolution);
             }
-            var imageList = DBManager.getImages(imageSources, color, colorError);
+            var imageList = DBManager.GetImages(imageSources, color, colorError);
             while (imageList.Count > 0)
             {
                 Bitmap image = null;
@@ -204,7 +215,7 @@ namespace Mosaic
                 else
                 {
                     Bitmap tempImage = null;
-                    var type = DBManager.getImageSourceType(imageList[i].path);
+                    var type = DBManager.GetImageSourceType(imageList[i].path);
                     try
                     {
                         if (type == ImageSource.Type.Directory)
@@ -252,7 +263,7 @@ namespace Mosaic
             }
         }
 
-        private Bitmap getSector(int x, int y, int width, int height)
+        private Bitmap GetSector(int x, int y, int width, int height)
         {
             Bitmap sector;
             lock (originalBitmap)
@@ -266,14 +277,14 @@ namespace Mosaic
             return sector;
         }
 
-        private static void sortByColorError(List<Image> imageList, Color color)
+        private static void SortByColorError(List<Image> imageList, Color color)
         {
             if (imageList.Count <= 1)
                 return;
-            imageList.Sort((img1, img2) => getColorError(img1, color).CompareTo(getColorError(img2, color)));
+            imageList.Sort((img1, img2) => GetColorError(img1, color).CompareTo(GetColorError(img2, color)));
         }
 
-        private static int getColorError(Image image, Color color)
+        private static int GetColorError(Image image, Color color)
         {
             int error = 0;
             error += Math.Abs(image.color.R - color.R);
