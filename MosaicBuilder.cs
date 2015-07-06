@@ -84,14 +84,18 @@ namespace Mosaic
             SectorsCount = 1; // To make progress bar start empty
             threadCount = Environment.ProcessorCount;
             semaphore = new SemaphoreSlim(threadCount, threadCount);
+            Mosaic = null;
+            Original = null;
         }
 
         public MosaicBuilder(Bitmap bitmap)
         {
+            Mosaic = null;
             SetImage(bitmap);
         }
         public MosaicBuilder(BitmapImage bitmapImage)
         {
+            Mosaic = null;
             SetImage(bitmapImage);
         }
 

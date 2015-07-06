@@ -141,7 +141,7 @@ namespace Mosaic
                     tempImage = new BitmapImage(new Uri(imagePath));
                     image = ImageConverter.BitmapImageToBitmap(tempImage); 
                 }
-                catch(System.IO.FileNotFoundException)
+                catch(Exception)
                 {
                     ++FailedToIndex;
                     return;

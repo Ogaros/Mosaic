@@ -9,11 +9,12 @@ namespace Mosaic
     internal static class DBManager
     {
         public const String dbName = "IndexedImageSources.db";
-        private static SQLiteConnection connection = new SQLiteConnection("DataSource=" + dbName + ";Version=3;");
+        private static SQLiteConnection connection;
 
         public static void OpenDBConnection()
         {
-            if(File.Exists(dbName) == false)
+            connection = new SQLiteConnection("DataSource=" + dbName + ";Version=3;");
+            if (File.Exists(dbName) == false)
             {
                 CreateDatabase();
             }

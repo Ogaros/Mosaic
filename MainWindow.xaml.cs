@@ -42,8 +42,11 @@ namespace Mosaic
             b_Construct.IsEnabled = isBlocked;
             b_SaveMosaic.IsEnabled = isBlocked;
             b_SelectSources.IsEnabled = isBlocked;
-            rb_MosaicView.IsEnabled = isBlocked;
-            rb_OriginalImageView.IsEnabled = isBlocked;
+            if (mosaicBuilder.Original != null)
+            {
+                rb_MosaicView.IsEnabled = isBlocked;
+                rb_OriginalImageView.IsEnabled = isBlocked;
+            }
             tb_SectorsNumHorizontal.IsEnabled = isBlocked;
             tb_SectorsNumVertical.IsEnabled = isBlocked;
             tb_ResolutionH.IsEnabled = isBlocked;
@@ -94,17 +97,24 @@ namespace Mosaic
                 BlockUI(false);
                 return;
             }
+
+            if ((bool)rb_OriginalImageView.IsChecked)
+                i_Image.Source = mosaicBuilder.Original;
+            else
+                rb_OriginalImageView.IsChecked = true;
+            SetZoomIncrement();
+
             if (resolutionH == 0 || resolutionW == 0)
             {
                 ShowErrorMessage(ErrorType.ZeroMosaicResolution);
                 BlockUI(false);
                 return;
             }            
-            ShowProgressBar();           
+            ShowProgressBar(true);           
             l_StatusLabel.Content = "Constructing mosaic...";
             await Task.Run(() => mosaicBuilder.BuildMosaic(resolutionW, resolutionH, secHorizontal, secVertical, imageSources));       
             BlockUI(false);
-            HideProgressBar();
+            ShowProgressBar(false);  
             if(mosaicBuilder.ErrorStatus != ErrorType.NoErrors)
             {
                 ShowErrorMessage(mosaicBuilder.ErrorStatus);
@@ -115,11 +125,15 @@ namespace Mosaic
                 i_Image.Source = mosaicBuilder.Mosaic;
             else
                 rb_MosaicView.IsChecked = true;
-
-            zoomIncrement = zoomIncrementPixels / i_Image.Source.Width;
-            TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.None;
+            SetZoomIncrement();
+                       
             l_StatusLabel.Content = "Mosaic constructed";
-        }       
+        }    
+        
+        private void SetZoomIncrement()
+        {
+            zoomIncrement = zoomIncrementPixels / i_Image.Source.Width; 
+        }
 
         private void b_SelectSources_Click(object sender, RoutedEventArgs e)
         {
@@ -188,20 +202,23 @@ namespace Mosaic
             tblock_ErrorMessage.Visibility = System.Windows.Visibility.Hidden;
         }        
 
-        private void ShowProgressBar()
-        {            
-            pb_MosaicProgress.Visibility = System.Windows.Visibility.Visible;
-            TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.Normal;
-        }
-
-        private void HideProgressBar()
+        private void ShowProgressBar(bool show)
         {
-            pb_MosaicProgress.Visibility = System.Windows.Visibility.Collapsed;
+            if (show)
+            {
+                pb_MosaicProgress.Visibility = System.Windows.Visibility.Visible;
+                TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.Normal;
+            }
+            else
+            {
+                pb_MosaicProgress.Visibility = System.Windows.Visibility.Collapsed;
+                TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.None;
+            }
         }
 
         private void ScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
-            if (rb_MosaicView.IsEnabled)
+            if (isDragEnabled == false)
             {
                 if (e.Delta > 0)
                     zoomValue += zoomIncrement;

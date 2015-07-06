@@ -127,8 +127,7 @@ namespace Mosaic
             indexer.Dispose();
             indexer = null;
             ShowIndexingUI(false);
-            BlockUI(false);
-            Owner.TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.None;
+            BlockUI(false);            
         }
 
         private bool FillSourceFromTextbox(ref ImageSource source)
@@ -189,7 +188,10 @@ namespace Mosaic
         {
             var visibility = show ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
             g_IndexingGrid.Visibility = visibility;
-            Owner.TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.Normal;
+            if(show)
+                Owner.TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.Normal;
+            else
+                Owner.TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.None;
         }      
   
         private void ShowErrorMessage(ErrorType errorType, String parameter = "")
