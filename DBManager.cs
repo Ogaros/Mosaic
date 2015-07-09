@@ -11,7 +11,7 @@ namespace Mosaic
         public const String dbName = "IndexedImageSources.db";
         private static SQLiteConnection connection;
 
-        public static void OpenDBConnection()
+        static DBManager()
         {
             connection = new SQLiteConnection("DataSource=" + dbName + ";Version=3;");
             if (File.Exists(dbName) == false)
@@ -26,7 +26,7 @@ namespace Mosaic
 
         public static void CloseDBConnection()
         {
-            if(connection.State != System.Data.ConnectionState.Closed)
+            if(connection != null && connection.State != System.Data.ConnectionState.Closed)
             {
                 connection.Close();
             }

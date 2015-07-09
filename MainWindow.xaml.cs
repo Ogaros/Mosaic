@@ -29,7 +29,6 @@ namespace Mosaic
         public MainWindow()
         {
             InitializeComponent();
-            DBManager.OpenDBConnection();
             imageSources = DBManager.GetUsedSources();
             DataContext = mosaicBuilder;
             tb_ResolutionW.Text = SystemParameters.VirtualScreenWidth.ToString();

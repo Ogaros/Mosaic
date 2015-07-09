@@ -88,14 +88,12 @@ namespace Mosaic
             Original = null;
         }
 
-        public MosaicBuilder(Bitmap bitmap)
+        public MosaicBuilder(Bitmap bitmap) : this()
         {
-            Mosaic = null;
             SetImage(bitmap);
         }
-        public MosaicBuilder(BitmapImage bitmapImage)
+        public MosaicBuilder(BitmapImage bitmapImage) : this()
         {
-            Mosaic = null;
             SetImage(bitmapImage);
         }
 
