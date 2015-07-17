@@ -98,11 +98,12 @@ namespace Mosaic
             }
 
             if ((bool)rb_OriginalImageView.IsChecked)
+            {
                 i_Image.Source = mosaicBuilder.Original;
+                SetZoomIncrement();
+            }
             else
-                rb_OriginalImageView.IsChecked = true;
-            SetZoomIncrement();
-
+                rb_OriginalImageView.IsChecked = true;          
             if (resolutionH == 0 || resolutionW == 0)
             {
                 ShowErrorMessage(ErrorType.ZeroMosaicResolution);
@@ -120,12 +121,13 @@ namespace Mosaic
                 return;
             }
 
-            if((bool)rb_MosaicView.IsChecked)
+            if ((bool)rb_MosaicView.IsChecked)
+            {
                 i_Image.Source = mosaicBuilder.Mosaic;
+                SetZoomIncrement();
+            }
             else
                 rb_MosaicView.IsChecked = true;
-            SetZoomIncrement();
-                       
             l_StatusLabel.Content = "Mosaic constructed";
         }    
         
@@ -259,11 +261,13 @@ namespace Mosaic
         private void rb_MosaicView_Checked(object sender, RoutedEventArgs e)
         {
             i_Image.Source = mosaicBuilder.Mosaic;
+            SetZoomIncrement();
         }
 
         private void rb_OriginalImageView_Checked(object sender, RoutedEventArgs e)
         {
             i_Image.Source = mosaicBuilder.Original;
+            SetZoomIncrement();
         }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)

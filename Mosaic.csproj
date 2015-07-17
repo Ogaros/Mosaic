@@ -86,6 +86,7 @@
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
     <Reference Include="System.Data" />
+    <Reference Include="System.Data.Linq" />
     <Reference Include="System.Data.SQLite">
       <HintPath>..\packages\System.Data.SQLite.Core.1.0.97.0\lib\net45\System.Data.SQLite.dll</HintPath>
     </Reference>
@@ -110,40 +111,41 @@
     <Reference Include="PresentationFramework" />
   </ItemGroup>
   <ItemGroup>
-    <ApplicationDefinition Include="App.xaml">
+    <Compile Include="src\App.xaml.cs">
+      <DependentUpon>App.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="src\BitmapExtensions.cs" />
+    <Compile Include="src\ErrorMessages.cs" />
+    <Compile Include="src\Image.cs" />
+    <Compile Include="src\ImgurEntities.cs" />
+    <Compile Include="src\JsonParser.cs" />
+    <Compile Include="src\WebManager.cs" />
+    <ApplicationDefinition Include="src\App.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Compile Include="ErrorMessages.cs" />
-    <Compile Include="ImgurEntities.cs" />
-    <Compile Include="JsonParser.cs" />
-    <Compile Include="WebManager.cs" />
-    <Page Include="ImageSourceWindow.xaml">
+    <Page Include="src\ImageSourceWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="MainWindow.xaml">
+    <Page Include="src\MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Compile Include="App.xaml.cs">
-      <DependentUpon>App.xaml</DependentUpon>
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="DBManager.cs" />
-    <Compile Include="ImageConverter.cs" />
-    <Compile Include="ImageIndexer.cs" />
-    <Compile Include="ImageSource.cs" />
-    <Compile Include="ImageSourceWindow.xaml.cs">
+    <Compile Include="src\DBManager.cs" />
+    <Compile Include="src\ImageConverter.cs" />
+    <Compile Include="src\ImageIndexer.cs" />
+    <Compile Include="src\ImageSource.cs" />
+    <Compile Include="src\ImageSourceWindow.xaml.cs">
       <DependentUpon>ImageSourceWindow.xaml</DependentUpon>
     </Compile>
-    <Compile Include="MainWindow.xaml.cs">
+    <Compile Include="src\MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="MosaicBuilder.cs" />
+    <Compile Include="src\MosaicBuilder.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -170,7 +172,7 @@
     <AppDesigner Include="Properties\" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.config" />
+    <None Include="src\App.config" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.5">
@@ -188,6 +190,9 @@
       <ProductName>.NET Framework 3.5 SP1</ProductName>
       <Install>false</Install>
     </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <Service Include="{3259AA49-8AA1-44D3-9025-A0B520596A8C}" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="..\packages\System.Data.SQLite.Core.1.0.97.0\build\net45\System.Data.SQLite.Core.targets" Condition="Exists('..\packages\System.Data.SQLite.Core.1.0.97.0\build\net45\System.Data.SQLite.Core.targets')" />

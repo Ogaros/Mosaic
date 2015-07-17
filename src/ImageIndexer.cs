@@ -22,7 +22,7 @@ namespace Mosaic
         public int FailedToIndex { get; private set; } // number of images indexing of which has failed for whatever reason
         public ErrorType ErrorStatus { get; private set; }
 
-        private volatile int progress;
+        private int progress;
         private String[] imageList;
         private SemaphoreSlim semaphore;
         private int threadCount;
@@ -45,10 +45,14 @@ namespace Mosaic
             if(disposing)
             {
                 if (semaphore != null)
-                    semaphore.Dispose();
+                    semaphore.Dispose();                
             }
         }
 
+        /// <summary>
+        /// <para>Adds all accessible images with their average color to the database.</para>
+        /// <para>If successfull, ErrorStatus is NoErrors.</para>
+        /// </summary>
         public void IndexImages(ImageSource source)
         {
             if (DBManager.ContainsSource(source))
@@ -70,22 +74,15 @@ namespace Mosaic
                             imageList = Directory.GetFiles(source.path, "*.jpg", SearchOption.TopDirectoryOnly);
                             break;
                         }
-                    case ImageSource.Type.ImgurAlbum:
+                    default:
                         {
-                            ErrorStatus = FillImageListFromImgur(ref source, webManager.GetAlbumJson); // also sets up source name
-                            if (ErrorStatus != ErrorType.NoErrors)
-                                return;
-                            break;
-                        }
-                    case ImageSource.Type.ImgurGallery:
-                        {
-                            ErrorStatus = FillImageListFromImgur(ref source, webManager.GetGalleryJson); // also sets up source name
-                            if (ErrorStatus != ErrorType.NoErrors)
-                                return;
+                            ErrorStatus = FillImageListFromImgur(ref source, webManager); // also sets up source name
                             break;
                         }
                 }
             }
+            if (ErrorStatus != ErrorType.NoErrors)
+                return;
             DBManager.AddSource(source);
             ImageCount = imageList.Length;
             source.imageCount = ImageCount;
@@ -120,12 +117,12 @@ namespace Mosaic
             OnPropertyChanged("CurrentImageNumber");
             CurrentImagePath = imagePath;
             OnPropertyChanged("CurrentImagePath");
-            Bitmap image;
+            Bitmap bitmap;
             if(source.type == ImageSource.Type.Directory)
             {
                 try
                 {
-                    image = new Bitmap(imagePath);
+                    bitmap = new Bitmap(imagePath);
                 }
                 catch (System.IO.FileNotFoundException)
                 {
@@ -139,7 +136,7 @@ namespace Mosaic
                 try
                 {
                     tempImage = new BitmapImage(new Uri(imagePath));
-                    image = ImageConverter.BitmapImageToBitmap(tempImage); 
+                    bitmap = ImageConverter.BitmapImageToBitmap(tempImage); 
                 }
                 catch(Exception)
                 {
@@ -147,23 +144,35 @@ namespace Mosaic
                     return;
                 }                               
             }
-            Color averageColor = GetAverageColor(image);
-            DBManager.AddImage(source, imagePath, averageColor, GetImageHash(image));
-            image.Dispose();
+            Color averageColor = bitmap.GetAverageColor();
+            Image image = new Image(imagePath, averageColor, bitmap.GetSHA256Hash());
+            DBManager.AddImage(source, image);
+            bitmap.Dispose();
             if (StopIndexing == false)
             {
-                ++progress;
+                Interlocked.Increment(ref progress);
                 OnPropertyChanged("Progress");
             }
             semaphore.Release();
         }
 
-        private ErrorType FillImageListFromImgur(ref ImageSource source, Func<String, String> getGalleryJson)
+        /// <summary>
+        /// Returns NoError if successfull.
+        /// </summary>
+        private ErrorType FillImageListFromImgur(ref ImageSource source, WebManager webManager)
         {
             String jsonGallery = null;
             try
             {
-                jsonGallery = getGalleryJson(source.id);
+                switch(source.type)
+                {
+                    case ImageSource.Type.ImgurAlbum:
+                        jsonGallery = webManager.GetAlbumJson(source.id);
+                        break;
+                    default:
+                        jsonGallery = webManager.GetGalleryJson(source.id);
+                        break;
+                }
             }
             catch (System.Net.WebException)
             {
@@ -177,40 +186,7 @@ namespace Mosaic
                 imageList[i] = gallery.images[i].link;
             }
             return ErrorType.NoErrors;
-        }
-
-        private static String GetImageHash(Bitmap image)
-        {
-            using (SHA256 sha = SHA256Managed.Create())
-            {
-                using (MemoryStream ms = new MemoryStream())
-                {
-                    image.Save(ms, ImageFormat.Jpeg);
-                    var hash = sha.ComputeHash(ms.ToArray());
-                    return System.Text.Encoding.Default.GetString(hash);
-                }
-            }
-        }
-
-        public static Color GetAverageColor(Bitmap image)
-        {
-            long R = 0, G = 0, B = 0;
-            Color tempColor;
-
-            for (int y = 0; y < image.Height; y++)
-            {
-                for (int x = 0; x < image.Width; x++)
-                {
-                    tempColor = image.GetPixel(x, y);
-                    R += tempColor.R;
-                    G += tempColor.G;
-                    B += tempColor.B;
-                }
-            }
-
-            long pixelCount = image.Height * image.Width;
-            return Color.FromArgb((int)(R / pixelCount), (int)(G / pixelCount), (int)(B / pixelCount));
-        }
+        }      
 
         protected void OnPropertyChanged(string name)
         {

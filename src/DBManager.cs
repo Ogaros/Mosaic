@@ -83,17 +83,50 @@ namespace Mosaic
             }
         }
 
+        /// <summary>
+        /// Returns null if there are no sources or no images.
+        /// </summary>
+        public static Image GetRandomImage(List<ImageSource> sources)
+        {
+            if (sources.Count == 0)
+                return null;
+            String sourcePathCondition = MakeSourcePathConditionLine(sources);
+            String sql = "SELECT * FROM Images " +
+                         "INNER JOIN Sources ON Sources.id = Images.sourceId AND " + sourcePathCondition +
+                         "ORDER BY RANDOM() " +
+                         "LIMIT 1";
+            Image image = null;
+            using (SQLiteCommand cmd = new SQLiteCommand(sql, connection))
+            {
+                using (SQLiteDataReader reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        Color color = Color.FromArgb((int)(Int64)reader["red"], (int)(Int64)reader["green"], (int)(Int64)reader["blue"]);
+                        image = new Image((String)reader["path"], color, (String)reader["hashcode"]);
+                    }                    
+                }
+            }
+            return image;
+        }
+
+        public static int GetImageCount(List<ImageSource> sources)
+        {
+            String sourcePathCondition = MakeSourcePathConditionLine(sources);
+            String sql = "SELECT COUNT(*) FROM Images " +
+                         "INNER JOIN Sources ON Sources.id = Images.sourceId AND " + sourcePathCondition;
+            using (SQLiteCommand cmd = new SQLiteCommand(sql, connection))
+            {
+                return Convert.ToInt32(cmd.ExecuteScalar());
+            }
+        }
+
         public static List<Image> GetImages(List<ImageSource> sources, Color c, int error)
         {
             if(sources.Count == 0)
                 return new List<Image>();
-            String sourcePathCondition = "(Sources.path = '" + sources[0].path + "'";
-            for(int i = 1; i < sources.Count; i++)
-            {
-                sourcePathCondition += " OR Sources.path = '" + sources[i].path + "'";
-            }
-            sourcePathCondition += ") ";
-            String sql = "SELECT Images.path, red, green, blue FROM Images " +
+            String sourcePathCondition = MakeSourcePathConditionLine(sources);
+            String sql = "SELECT * FROM Images " +
                          "INNER JOIN Sources ON Sources.id = Images.sourceId AND " + sourcePathCondition +
                          "WHERE (red BETWEEN @redMin AND @redMax) AND " +
                                "(blue BETWEEN @blueMin AND @blueMax) AND " +
@@ -112,14 +145,28 @@ namespace Mosaic
                     while (reader.Read())
                     {
                         Color color = Color.FromArgb((int)(Int64)reader["red"], (int)(Int64)reader["green"], (int)(Int64)reader["blue"]);
-                        imageList.Add(new Image((String)reader["path"], color));
+                        imageList.Add(new Image((String)reader["path"], color, (String)reader["hashcode"]));
                     }
                     return imageList;
                 }
             }
         }
 
-        public static void AddImage(ImageSource source, String path, Color c, String hashcode)
+        /// <summary>
+        /// Returns a string with the format: "(Sources.path = sourcepath1 OR ... OR Sources.path = sourcepathN) "
+        /// </summary>
+        private static String MakeSourcePathConditionLine(List<ImageSource> sources)
+        {
+            String sourcePathCondition = "(Sources.path = '" + sources[0].path + "'";
+            for (int i = 1; i < sources.Count; i++)
+            {
+                sourcePathCondition += " OR Sources.path = '" + sources[i].path + "'";
+            }
+            sourcePathCondition += ") ";
+            return sourcePathCondition;
+        }
+
+        public static void AddImage(ImageSource source, Image image)
         {
             int sourceId = GetSourceId(source);
             String sql = "INSERT INTO Images (sourceId, path, red, green, blue, hashcode) " +
@@ -127,11 +174,11 @@ namespace Mosaic
             using (SQLiteCommand cmd = new SQLiteCommand(sql, connection))
             {
                 cmd.Parameters.Add(new SQLiteParameter("@sourceId", sourceId));
-                cmd.Parameters.Add(new SQLiteParameter("@path", path));
-                cmd.Parameters.Add(new SQLiteParameter("@red", c.R));
-                cmd.Parameters.Add(new SQLiteParameter("@green", c.G));
-                cmd.Parameters.Add(new SQLiteParameter("@blue", c.B));
-                cmd.Parameters.Add(new SQLiteParameter("@hashcode", hashcode));
+                cmd.Parameters.Add(new SQLiteParameter("@path", image.path));
+                cmd.Parameters.Add(new SQLiteParameter("@red", image.color.R));
+                cmd.Parameters.Add(new SQLiteParameter("@green", image.color.G));
+                cmd.Parameters.Add(new SQLiteParameter("@blue", image.color.B));
+                cmd.Parameters.Add(new SQLiteParameter("@hashcode", image.hashcode));
                 cmd.ExecuteNonQuery();
             }            
         }
@@ -162,13 +209,13 @@ namespace Mosaic
             }
         }
 
-        public static ImageSource.Type GetImageSourceType(String imagePath)
+        public static ImageSource.Type GetImageSourceType(Image image)
         {
             String sql = "SELECT type FROM Sources " +
                          "INNER JOIN Images ON Images.path = @path AND Images.sourceId = Sources.id";
             using (SQLiteCommand cmd = new SQLiteCommand(sql, connection))
             {
-                cmd.Parameters.Add(new SQLiteParameter("@path", imagePath));
+                cmd.Parameters.Add(new SQLiteParameter("@path", image.path));
                 var type = (ImageSource.Type)(Int64)cmd.ExecuteScalar();             
                 return type;
             }
@@ -232,6 +279,9 @@ namespace Mosaic
             }
         }  
       
+        /// <summary>
+        /// Removes all images from the source with specified Id.
+        /// </summary>
         private static void RemoveImages(int sourceId)
         {
             String sql = "DELETE FROM Images WHERE sourceId = @id";
