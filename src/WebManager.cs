@@ -22,8 +22,6 @@ namespace Mosaic
             int responseStatusCode = JsonParser.GetStatusCode(jsonGallery);
             if (responseStatusCode != 200)
                 throw new WebException("Imgur returned error code: " + responseStatusCode.ToString());
-            int[] arr = new int[10];
-            arr.Where(x => x % 2 == 0).Sum();
             return jsonGallery;           
         }
         
