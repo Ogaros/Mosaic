@@ -47,6 +47,7 @@
         <Button x:Name="b_AddNewSource" Content="Add new source" Margin="10,5,10,10" VerticalAlignment="Top" Width="137" Grid.Row="4" Grid.Column="1" HorizontalAlignment="Left" Height="23" Padding="1" Click="b_AddNewSource_Click"/>        
         <Grid x:Name="g_IndexingGrid" Grid.Row="5" Grid.ColumnSpan="2" Visibility="Collapsed">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
@@ -62,9 +63,10 @@
                 <Label Content="{Binding ImageCount}" Padding="0"/>
                 <Label Content=" ):" Padding="0"/>
             </StackPanel>
-            <Label x:Name="l_IndexedImagePathLabel" Grid.Row="1" Grid.ColumnSpan="2" Content="{Binding CurrentImagePath}" Padding="10,0,5,5"/>
-            <ProgressBar x:Name="pb_IndexingProgress" Grid.Row="2" Grid.Column="0" Height="23" Margin="10,0,0,10" Value="{Binding Progress, Mode=OneWay}" Maximum="{Binding ImageCount}" ValueChanged="pb_IndexingProgress_ValueChanged"/>
-            <Button x:Name="b_CancelIndexing" Content="Cancel indexing" Grid.Row="2" Grid.Column="1" Margin="10,0,10,10" Width="137" Height="23" Click="b_CancelIndexing_Click"/>
+            <Label x:Name="l_CancelMessageLabel" Grid.Row="1" Grid.Column="0" Content="Cancelling source indexing..." Padding="10,0,5,5" Visibility="Collapsed"/>
+            <Label x:Name="l_IndexedImagePathLabel" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Content="{Binding CurrentImagePath}" Padding="10,0,5,5"/>            
+            <ProgressBar x:Name="pb_IndexingProgress" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Height="23" Margin="10,0,0,10" Value="{Binding Progress, Mode=OneWay}" Maximum="{Binding ImageCount}" ValueChanged="pb_IndexingProgress_ValueChanged"/>
+            <Button x:Name="b_CancelIndexing" Content="Cancel indexing" Grid.Row="2" Grid.Column="2" Margin="10,0,10,10" Width="137" Height="23" Click="b_CancelIndexing_Click"/>
         </Grid>
         <TextBlock x:Name="tblock_ErrorMessage" Grid.Row="6" Grid.ColumnSpan="2" Margin="10,0,10,10" FlowDirection="RightToLeft" Foreground="#FFE01717" TextWrapping="Wrap" Visibility="Collapsed"/>
     </Grid>

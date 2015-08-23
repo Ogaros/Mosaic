@@ -16,29 +16,29 @@ namespace Mosaic
     /// </summary>
     public partial class ImageSourceWindow : Window
     {
-        private const String newSourceTBText = "New source path";
-        private ObservableCollection<ImageSource> imageSources = null;
-        private ImageIndexer indexer = null;
-        private readonly Regex regexDirectory = new Regex(@".:\\(.*\\)*(.*)");
-        private readonly Regex regexImgurGallery = new Regex(@"https?:\/\/imgur.com\/gallery\/(.*)");
-        private readonly Regex regexImgurAlbum = new Regex(@"https?:\/\/imgur.com\/a\/(.*)");
+        private const String _newSourceTBText = "New source path";
+        private ObservableCollection<ImageSource> _imageSources = null;
+        private ImageIndexer _indexer = null;
+        private readonly Regex _regexDirectory = new Regex(@".:\\(.*\\)*(.*)");
+        private readonly Regex _regexImgurGallery = new Regex(@"https?:\/\/imgur.com\/gallery\/(.*)");
+        private readonly Regex _regexImgurAlbum = new Regex(@"https?:\/\/imgur.com\/a\/(.*)");
 
         public ImageSourceWindow()
         {
             DataContext = this;
             InitializeComponent();
             FillSourceList();
-            lv_SourceList.ItemsSource = imageSources;                       
+            lv_SourceList.ItemsSource = _imageSources;                       
         }
 
         private void FillSourceList()
         {
-            imageSources = new ObservableCollection<ImageSource>(DBManager.GetAllSources());
+            _imageSources = new ObservableCollection<ImageSource>(DBManager.GetAllSources());
         }
 
         private void b_Ok_Click(object sender, RoutedEventArgs e)
         {
-            foreach(ImageSource source in imageSources)
+            foreach(ImageSource source in _imageSources)
             {
                 DBManager.UpdateIsUsedField(source);
             }
@@ -49,12 +49,12 @@ namespace Mosaic
         private void tb_SourcePath_LostFocus(object sender, RoutedEventArgs e)
         {
             if (tb_SourcePath.Text == "")
-                tb_SourcePath.Text = newSourceTBText;
+                tb_SourcePath.Text = _newSourceTBText;
         }
 
         private void tb_SourcePath_GotFocus(object sender, RoutedEventArgs e)
         {
-            if (tb_SourcePath.Text == newSourceTBText)
+            if (tb_SourcePath.Text == _newSourceTBText)
                 tb_SourcePath.Text = "";
         }
 
@@ -62,7 +62,7 @@ namespace Mosaic
         {
             HideErrorMessage();            
             List<ImageSource> sourcesToDelete = new List<ImageSource>();
-            foreach(ImageSource source in imageSources)
+            foreach(ImageSource source in _imageSources)
             {
                 if (source.isUsed)
                 {
@@ -82,7 +82,7 @@ namespace Mosaic
             foreach(ImageSource source in sourcesToDelete)
             {
                 DBManager.RemoveSource(source);
-                imageSources.Remove(source);
+                _imageSources.Remove(source);
             }
         }
 
@@ -92,40 +92,40 @@ namespace Mosaic
             ImageSource source = null;
             if (FillSourceFromTextbox(ref source) == false) // error with the source URI           
                 return;            
-            indexer = new ImageIndexer();
-            g_IndexingGrid.DataContext = indexer;
+            _indexer = new ImageIndexer();
+            g_IndexingGrid.DataContext = _indexer;
             BlockUI(true);
             ShowIndexingUI(true);
 
-            await Task.Run(() => indexer.IndexImages(source));
-            switch (indexer.ErrorStatus)
+            await Task.Run(() => _indexer.IndexImages(source));
+            switch (_indexer.ErrorStatus)
             {
                 case ErrorType.NoErrors:
                     {
-                        imageSources.Add(source);
+                        _imageSources.Add(source);
                         break;
                     }
                 case ErrorType.IndexingCancelled:
                     {
-                        // Restore image path label that was used to show cancelling message
                         sp_ImageCountPanel.Visibility = System.Windows.Visibility.Visible;
-                        l_IndexedImagePathLabel.SetBinding(Label.ContentProperty, new Binding("CurrentImagePath"));
-                        ShowErrorMessage(indexer.ErrorStatus);
+                        l_IndexedImagePathLabel.Visibility = System.Windows.Visibility.Visible;
+                        l_CancelMessageLabel.Visibility = System.Windows.Visibility.Collapsed;
+                        ShowErrorMessage(_indexer.ErrorStatus);
                         break;
                     }
                 case ErrorType.PartiallyIndexed:
                     {
-                        ShowErrorMessage(indexer.ErrorStatus, indexer.FailedToIndex.ToString());
+                        ShowErrorMessage(_indexer.ErrorStatus, _indexer.FailedToIndex.ToString());
                         break;
                     }
                 default:
                     {
-                        ShowErrorMessage(indexer.ErrorStatus);
+                        ShowErrorMessage(_indexer.ErrorStatus);
                         break;
                     }
             }
-            indexer.Dispose();
-            indexer = null;
+            _indexer.Dispose();
+            _indexer = null;
             ShowIndexingUI(false);
             BlockUI(false);            
         }
@@ -136,7 +136,7 @@ namespace Mosaic
             String name = "";
             ImageSource.Type type;
             Match match;
-            if ((match = regexDirectory.Match(path)).Success)
+            if ((match = _regexDirectory.Match(path)).Success)
             {
                 if (Directory.Exists(path) == false)
                 {
@@ -149,11 +149,11 @@ namespace Mosaic
                     name = path;
             } 
                 // Names for imgur albums and galleries are set during image indexing to avoid extra api calls
-            else if ((match = regexImgurAlbum.Match(path)).Success)
+            else if ((match = _regexImgurAlbum.Match(path)).Success)
             {
                 type = ImageSource.Type.ImgurAlbum;
             }
-            else if ((match = regexImgurGallery.Match(path)).Success)
+            else if ((match = _regexImgurGallery.Match(path)).Success)
             {
                 type = ImageSource.Type.ImgurGallery;
             }
@@ -168,9 +168,10 @@ namespace Mosaic
 
         private void b_CancelIndexing_Click(object sender, RoutedEventArgs e)
         {
-            indexer.StopIndexing = true;
+            _indexer.StopIndexing = true;
             sp_ImageCountPanel.Visibility = System.Windows.Visibility.Hidden;
-            l_IndexedImagePathLabel.Content = "Cancelling source indexing...";
+            l_IndexedImagePathLabel.Visibility = System.Windows.Visibility.Collapsed;
+            l_CancelMessageLabel.Visibility = System.Windows.Visibility.Visible;
         }
 
         private void BlockUI(bool isBlocked)
@@ -210,7 +211,7 @@ namespace Mosaic
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            if(indexer != null)
+            if(_indexer != null)
             {
                 ShowErrorMessage(ErrorType.IndexingInProgress);                
                 e.Cancel = true;

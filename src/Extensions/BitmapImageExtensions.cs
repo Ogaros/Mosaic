@@ -1,14 +1,13 @@
 ﻿using System;
 using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Windows.Media.Imaging;
 
 namespace Mosaic
 {
-    internal static class ImageConverter
+    internal static class BitmapImageExtensions
     {
-        public static Bitmap BitmapImageToBitmap(BitmapImage bi)
+        public static Bitmap ToBitmap(this BitmapImage bi)
         {
             using (MemoryStream outStream = new MemoryStream())
             {
@@ -55,23 +54,6 @@ namespace Mosaic
                     result.SetResolution((float)bi.DpiX, (float)bi.DpiY);
                     return result;
                 }
-            }
-        }
-
-        public static BitmapImage BitmapToBitmapImage(Bitmap b)
-        {
-            using (MemoryStream outStream = new MemoryStream())
-            {
-                b.Save(outStream, ImageFormat.Jpeg);
-                outStream.Position = 0;
-
-                BitmapImage bi = new BitmapImage();
-                bi.BeginInit();
-                bi.StreamSource = outStream;
-                bi.CacheOption = BitmapCacheOption.OnLoad;
-                bi.EndInit();
-
-                return bi;
             }
         }
     }

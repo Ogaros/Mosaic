@@ -111,41 +111,45 @@
     <Reference Include="PresentationFramework" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="src\ImageIndexer\ImageList.cs" />
+    <Compile Include="src\ImageLoader.cs" />
     <Compile Include="src\App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
     </Compile>
-    <Compile Include="src\BitmapExtensions.cs" />
+    <Compile Include="src\Extensions\BitmapExtensions.cs" />
     <Compile Include="src\ErrorMessages.cs" />
     <Compile Include="src\Image.cs" />
     <Compile Include="src\ImgurEntities.cs" />
     <Compile Include="src\JsonParser.cs" />
+    <Compile Include="src\MosaicBuilder\SectorFiller.cs" />
+    <Compile Include="src\MosaicBuilder\SectorPool.cs" />
     <Compile Include="src\WebManager.cs" />
     <ApplicationDefinition Include="src\App.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Page Include="src\ImageSourceWindow.xaml">
+    <Page Include="src\UI\ImageSourceWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="src\MainWindow.xaml">
+    <Page Include="src\UI\MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
     <Compile Include="src\DBManager.cs" />
-    <Compile Include="src\ImageConverter.cs" />
-    <Compile Include="src\ImageIndexer.cs" />
+    <Compile Include="src\Extensions\BitmapImageExtensions.cs" />
+    <Compile Include="src\ImageIndexer\ImageIndexer.cs" />
     <Compile Include="src\ImageSource.cs" />
-    <Compile Include="src\ImageSourceWindow.xaml.cs">
+    <Compile Include="src\UI\ImageSourceWindow.xaml.cs">
       <DependentUpon>ImageSourceWindow.xaml</DependentUpon>
     </Compile>
-    <Compile Include="src\MainWindow.xaml.cs">
+    <Compile Include="src\UI\MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="src\MosaicBuilder.cs" />
+    <Compile Include="src\MosaicBuilder\MosaicBuilder.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">
       <SubType>Code</SubType>
     </Compile>

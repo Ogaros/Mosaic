@@ -6,6 +6,7 @@ namespace Mosaic
     enum ErrorType
     {
         NoErrors,
+
         // Errors that are displayed in the source selection window
         WrongSourceURI, SourceAlreadyIndexed, IndexingCancelled, NoSourceToRemove,
         IndexingInProgress, DirectoryNotFound, PartiallyIndexed, CantAccessSource,

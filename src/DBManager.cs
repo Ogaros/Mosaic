@@ -8,27 +8,27 @@ namespace Mosaic
 {
     internal static class DBManager
     {
-        public const String dbName = "IndexedImageSources.db";
-        private static SQLiteConnection connection;
+        public const String _dbName = "IndexedImageSources.db";
+        private static SQLiteConnection _connection;
 
         static DBManager()
         {
-            connection = new SQLiteConnection("DataSource=" + dbName + ";Version=3;");
-            if (File.Exists(dbName) == false)
+            _connection = new SQLiteConnection("DataSource=" + _dbName + ";Version=3;");
+            if (File.Exists(_dbName) == false)
             {
                 CreateDatabase();
             }
             else
             {
-                connection.Open();
+                _connection.Open();
             }
         }
 
         public static void CloseDBConnection()
         {
-            if(connection != null && connection.State != System.Data.ConnectionState.Closed)
+            if(_connection != null && _connection.State != System.Data.ConnectionState.Closed)
             {
-                connection.Close();
+                _connection.Close();
             }
         }
 
@@ -36,7 +36,7 @@ namespace Mosaic
         {
             String sql = "SELECT Count(*) FROM Images " +
                          "INNER JOIN Sources ON Sources.id = Images.sourceId AND Sources.path = @path";
-            using (SQLiteCommand cmd = new SQLiteCommand(sql, connection))
+            using (SQLiteCommand cmd = new SQLiteCommand(sql, _connection))
             {
                 cmd.Parameters.Add(new SQLiteParameter("@path", source.path));
                 int number = Convert.ToInt32(cmd.ExecuteScalar());
@@ -47,7 +47,7 @@ namespace Mosaic
         public static List<ImageSource> GetUsedSources()
         {
             String sql = "SELECT * FROM Sources Where isUsed = 1";
-            using (SQLiteCommand cmd = new SQLiteCommand(sql, connection))
+            using (SQLiteCommand cmd = new SQLiteCommand(sql, _connection))
             {
                 using (SQLiteDataReader reader = cmd.ExecuteReader())
                 {
@@ -66,7 +66,7 @@ namespace Mosaic
         public static List<ImageSource> GetAllSources()
         {
             String sql = "SELECT * FROM Sources";
-            using (SQLiteCommand cmd = new SQLiteCommand(sql, connection))
+            using (SQLiteCommand cmd = new SQLiteCommand(sql, _connection))
             {
                 using (SQLiteDataReader reader = cmd.ExecuteReader())
                 {
@@ -96,7 +96,7 @@ namespace Mosaic
                          "ORDER BY RANDOM() " +
                          "LIMIT 1";
             Image image = null;
-            using (SQLiteCommand cmd = new SQLiteCommand(sql, connection))
+            using (SQLiteCommand cmd = new SQLiteCommand(sql, _connection))
             {
                 using (SQLiteDataReader reader = cmd.ExecuteReader())
                 {
@@ -115,7 +115,7 @@ namespace Mosaic
             String sourcePathCondition = MakeSourcePathConditionLine(sources);
             String sql = "SELECT COUNT(*) FROM Images " +
                          "INNER JOIN Sources ON Sources.id = Images.sourceId AND " + sourcePathCondition;
-            using (SQLiteCommand cmd = new SQLiteCommand(sql, connection))
+            using (SQLiteCommand cmd = new SQLiteCommand(sql, _connection))
             {
                 return Convert.ToInt32(cmd.ExecuteScalar());
             }
@@ -131,7 +131,7 @@ namespace Mosaic
                          "WHERE (red BETWEEN @redMin AND @redMax) AND " +
                                "(blue BETWEEN @blueMin AND @blueMax) AND " +
                                "(green BETWEEN @greenMin AND @greenMax)";
-            using (SQLiteCommand cmd = new SQLiteCommand(sql, connection))
+            using (SQLiteCommand cmd = new SQLiteCommand(sql, _connection))
             {
                 cmd.Parameters.Add(new SQLiteParameter("@redMin", c.R - error));
                 cmd.Parameters.Add(new SQLiteParameter("@greenMin", c.G - error));
@@ -171,7 +171,7 @@ namespace Mosaic
             int sourceId = GetSourceId(source);
             String sql = "INSERT INTO Images (sourceId, path, red, green, blue, hashcode) " +
                          "VALUES (@sourceId, @path, @red, @green, @blue, @hashcode)";
-            using (SQLiteCommand cmd = new SQLiteCommand(sql, connection))
+            using (SQLiteCommand cmd = new SQLiteCommand(sql, _connection))
             {
                 cmd.Parameters.Add(new SQLiteParameter("@sourceId", sourceId));
                 cmd.Parameters.Add(new SQLiteParameter("@path", image.path));
@@ -186,7 +186,7 @@ namespace Mosaic
         public static void AddSource(ImageSource source)
         {
             String sql = "INSERT INTO Sources (path, name, type, isUsed) VALUES (@path, @name, @type, @isUsed)";
-            using (SQLiteCommand cmd = new SQLiteCommand(sql, connection))
+            using (SQLiteCommand cmd = new SQLiteCommand(sql, _connection))
             {
                 cmd.Parameters.Add(new SQLiteParameter("@path", source.path));
                 cmd.Parameters.Add(new SQLiteParameter("@name", source.name));
@@ -199,7 +199,7 @@ namespace Mosaic
         public static bool ContainsSource(ImageSource source)
         {
             String sql = "SELECT * FROM Sources WHERE path = @path";
-            using (SQLiteCommand cmd = new SQLiteCommand(sql, connection))
+            using (SQLiteCommand cmd = new SQLiteCommand(sql, _connection))
             {
                 cmd.Parameters.Add(new SQLiteParameter("@path", source.path));
                 using (SQLiteDataReader reader = cmd.ExecuteReader())
@@ -213,7 +213,7 @@ namespace Mosaic
         {
             String sql = "SELECT type FROM Sources " +
                          "INNER JOIN Images ON Images.path = @path AND Images.sourceId = Sources.id";
-            using (SQLiteCommand cmd = new SQLiteCommand(sql, connection))
+            using (SQLiteCommand cmd = new SQLiteCommand(sql, _connection))
             {
                 cmd.Parameters.Add(new SQLiteParameter("@path", image.path));
                 var type = (ImageSource.Type)(Int64)cmd.ExecuteScalar();             
@@ -224,7 +224,7 @@ namespace Mosaic
         public static void UpdateIsUsedField(ImageSource source)
         {
             String sql = "UPDATE Sources SET isUsed = @isUsed WHERE path = @path";
-            using (SQLiteCommand cmd = new SQLiteCommand(sql, connection))
+            using (SQLiteCommand cmd = new SQLiteCommand(sql, _connection))
             {
                 cmd.Parameters.Add(new SQLiteParameter("@path", source.path));
                 cmd.Parameters.Add(new SQLiteParameter("@isUsed", source.isUsed));
@@ -236,7 +236,7 @@ namespace Mosaic
         {
             int sourceId = GetSourceId(source);
             String sql = "DELETE FROM Sources WHERE id = @id";
-            using (SQLiteCommand cmd = new SQLiteCommand(sql, connection))
+            using (SQLiteCommand cmd = new SQLiteCommand(sql, _connection))
             {
                 cmd.Parameters.Add(new SQLiteParameter("@id", sourceId));
                 cmd.ExecuteNonQuery();             
@@ -246,8 +246,8 @@ namespace Mosaic
 
         private static void CreateDatabase()
         {
-            SQLiteConnection.CreateFile(dbName);
-            connection.Open();
+            SQLiteConnection.CreateFile(_dbName);
+            _connection.Open();
             CreateTables();
         }
 
@@ -255,12 +255,12 @@ namespace Mosaic
         {
             String sql = "CREATE TABLE Sources (id INTEGER PRIMARY KEY ASC, path TEXT, name TEXT, type INTEGER, isUsed BOOLEAN);";
             SQLiteCommand cmd = null;
-            using (cmd = new SQLiteCommand(sql, connection))
+            using (cmd = new SQLiteCommand(sql, _connection))
             {
                 cmd.ExecuteNonQuery();     
             }      
             sql = "CREATE TABLE Images (sourceId INTEGER, path TEXT, red INTEGER, green INTEGER, blue INTEGER, hashcode TEXT);";
-            using(cmd = new SQLiteCommand(sql, connection))
+            using(cmd = new SQLiteCommand(sql, _connection))
             {
                 cmd.ExecuteNonQuery();
             }
@@ -269,7 +269,7 @@ namespace Mosaic
         private static int GetSourceId(ImageSource source)
         {
             String sql = "SELECT id FROM Sources WHERE path = @path AND name = @name AND type = @type";
-            using (SQLiteCommand cmd = new SQLiteCommand(sql, connection))
+            using (SQLiteCommand cmd = new SQLiteCommand(sql, _connection))
             {
                 cmd.Parameters.Add(new SQLiteParameter("@path", source.path));
                 cmd.Parameters.Add(new SQLiteParameter("@name", source.name));
@@ -285,7 +285,7 @@ namespace Mosaic
         private static void RemoveImages(int sourceId)
         {
             String sql = "DELETE FROM Images WHERE sourceId = @id";
-            using (SQLiteCommand cmd = new SQLiteCommand(sql, connection))
+            using (SQLiteCommand cmd = new SQLiteCommand(sql, _connection))
             {
                 cmd.Parameters.Add(new SQLiteParameter("@id", sourceId));
                 cmd.ExecuteNonQuery();             

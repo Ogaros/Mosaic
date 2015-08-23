@@ -11,6 +11,7 @@ namespace Mosaic
             this.color = color;
             this.hashcode = hashcode;
         }
+
         public bool Equals(Image other)
         {
             if (ReferenceEquals(null, other))
@@ -19,10 +20,12 @@ namespace Mosaic
                 return true;
             return other.path == this.path;
         }
+
         public override int GetHashCode()
         {
             return path.GetHashCode();
         }
+
         public String path;
         public Color color;
         public String hashcode;
