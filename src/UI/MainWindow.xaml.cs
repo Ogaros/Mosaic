@@ -14,22 +14,22 @@ namespace Mosaic
     /// </summary>
     public partial class MainWindow : Window
     {
-        private const double zoomIncrementPixels = 50;
+        private const double _zoomIncrementPixels = 50;
 
         private MosaicBuilder mosaicBuilder = new MosaicBuilder();
-        private double zoomValue = 1.0;
-        private double zoomIncrement = 0.2;
-        private Point dragMousePoint = new Point();
-        private double dragHorizontalOffset = 1;
-        private double dragVerticalOffset = 1;
-        private bool isDragEnabled = false;
-        private List<ImageSource> imageSources;
-        private bool repeatImageSetup = true;
+        private double _zoomValue = 1.0;
+        private double _zoomIncrement = 0.2;
+        private Point _dragMousePoint = new Point();
+        private double _dragHorizontalOffset = 1;
+        private double _dragVerticalOffset = 1;
+        private bool _isDragEnabled = false;
+        private List<ImageSource> _imageSources;
+        private bool _repeatImageSetup = true;
 
         public MainWindow()
         {
             InitializeComponent();
-            imageSources = DBManager.GetUsedSources();
+            _imageSources = DBManager.GetUsedSources();
             DataContext = mosaicBuilder;
             tb_ResolutionW.Text = SystemParameters.VirtualScreenWidth.ToString();
             tb_ResolutionH.Text = SystemParameters.VirtualScreenHeight.ToString();
@@ -66,10 +66,10 @@ namespace Mosaic
                 // for some reason first time bitmap image is set, the resolution is wrong and the resulting mosaic looks bigger than the original image
                 // of the same size. I don't know why it's happening so i just restart the builder after a short delay when the button is clicked for the first time.
                 // Restarting instantly doesn't work.
-                if (repeatImageSetup)
+                if (_repeatImageSetup)
                 {
                     await Task.Delay(500);
-                    repeatImageSetup = false;
+                    _repeatImageSetup = false;
                     b_Construct_Click(sender, e);
                     return;
                 }
@@ -112,7 +112,7 @@ namespace Mosaic
             }            
             ShowProgressBar(true);           
             l_StatusLabel.Content = "Constructing mosaic...";
-            await Task.Run(() => mosaicBuilder.BuildMosaic(resolutionW, resolutionH, secHorizontal, secVertical, imageSources));       
+            await Task.Run(() => mosaicBuilder.BuildMosaic(resolutionW, resolutionH, secHorizontal, secVertical, _imageSources));       
             BlockUI(false);
             ShowProgressBar(false);  
             if(mosaicBuilder.ErrorStatus != ErrorType.NoErrors)
@@ -133,7 +133,7 @@ namespace Mosaic
         
         private void SetZoomIncrement()
         {
-            zoomIncrement = zoomIncrementPixels / i_Image.Source.Width; 
+            _zoomIncrement = _zoomIncrementPixels / i_Image.Source.Width; 
         }
 
         private void b_SelectSources_Click(object sender, RoutedEventArgs e)
@@ -145,7 +145,7 @@ namespace Mosaic
             window.Top = this.Top + ((this.Height / 2) - (window.Height / 2));                
             if(window.ShowDialog() == true)
             {
-                imageSources = DBManager.GetUsedSources();
+                _imageSources = DBManager.GetUsedSources();
             }   
         }
 
@@ -219,16 +219,16 @@ namespace Mosaic
 
         private void ScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
-            if (isDragEnabled == false)
+            if (_isDragEnabled == false)
             {
                 if (e.Delta > 0)
-                    zoomValue += zoomIncrement;
+                    _zoomValue += _zoomIncrement;
                 else
                 {
-                    if (zoomValue > 0.0)
-                        zoomValue -= zoomIncrement;
+                    if (_zoomValue > 0.0)
+                        _zoomValue -= _zoomIncrement;
                 }
-                ScaleTransform scale = new ScaleTransform(zoomValue, zoomValue);
+                ScaleTransform scale = new ScaleTransform(_zoomValue, _zoomValue);
                 i_Image.LayoutTransform = scale;
             }
             e.Handled = true;
@@ -237,24 +237,24 @@ namespace Mosaic
         private void ScrollViewer_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             sv_ScrollViewer.CaptureMouse();
-            dragMousePoint = e.GetPosition(sv_ScrollViewer);
-            dragHorizontalOffset = sv_ScrollViewer.HorizontalOffset;
-            dragVerticalOffset = sv_ScrollViewer.VerticalOffset;
-            isDragEnabled = true;
+            _dragMousePoint = e.GetPosition(sv_ScrollViewer);
+            _dragHorizontalOffset = sv_ScrollViewer.HorizontalOffset;
+            _dragVerticalOffset = sv_ScrollViewer.VerticalOffset;
+            _isDragEnabled = true;
         }
 
         private void ScrollViewer_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             sv_ScrollViewer.ReleaseMouseCapture();
-            isDragEnabled = false;
+            _isDragEnabled = false;
         }
 
         private void sv_ScrollViewer_PreviewMouseMove(object sender, MouseEventArgs e)
         {
-            if (isDragEnabled && sv_ScrollViewer.IsMouseCaptured)
+            if (_isDragEnabled && sv_ScrollViewer.IsMouseCaptured)
             {
-                sv_ScrollViewer.ScrollToHorizontalOffset(dragHorizontalOffset + (dragMousePoint.X - e.GetPosition(sv_ScrollViewer).X));
-                sv_ScrollViewer.ScrollToVerticalOffset(dragVerticalOffset + (dragMousePoint.Y - e.GetPosition(sv_ScrollViewer).Y));
+                sv_ScrollViewer.ScrollToHorizontalOffset(_dragHorizontalOffset + (_dragMousePoint.X - e.GetPosition(sv_ScrollViewer).X));
+                sv_ScrollViewer.ScrollToVerticalOffset(_dragVerticalOffset + (_dragMousePoint.Y - e.GetPosition(sv_ScrollViewer).Y));
             }
         }
 
