@@ -4,5 +4,5 @@ You can use folders on your computer and Imgur albums/galleries as sources for t
 
 Example of what this program does can be seen here: http://imgur.com/a/Z5ayE
 
-Installer for windows can be downloaded here: https://drive.google.com/file/d/0B1c74NV97_EAZ3pEZXEtb1N6ajA
+Installer for windows can be downloaded here: https://drive.google.com/file/d/0B1c74NV97_EAM196TzZ0X3NQM1k
 This installer have a couple of imgur albums already indexed.
